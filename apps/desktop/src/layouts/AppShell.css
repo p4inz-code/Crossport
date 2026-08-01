@@ -1,0 +1,22 @@
+/* ==========================================================================
+ * AppShell component styles
+ * ========================================================================== */
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 15rem 1fr;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.app-shell__frame {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.app-shell__main {
+  min-height: 0;
+  overflow-y: auto;
+}

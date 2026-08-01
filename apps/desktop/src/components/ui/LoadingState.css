@@ -1,0 +1,32 @@
+/* ==========================================================================
+ * LoadingState component styles
+ * ========================================================================== */
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-10) var(--space-6);
+}
+
+.loading-state__spinner {
+  color: var(--color-primary);
+  animation: loading-state-spin 0.9s linear infinite;
+}
+
+.loading-state__label {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+@keyframes loading-state-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}

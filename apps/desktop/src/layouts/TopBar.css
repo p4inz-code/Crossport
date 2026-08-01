@@ -1,0 +1,51 @@
+/* ==========================================================================
+ * TopBar component styles
+ * ========================================================================== */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 3.25rem;
+  padding-inline: var(--space-5);
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.topbar__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.topbar__app-name {
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+}
+
+.topbar__separator {
+  color: var(--color-text-subtle);
+}
+
+.topbar__context {
+  color: var(--color-text-muted);
+}
+
+.topbar__theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.topbar__theme-toggle:hover {
+  background-color: var(--color-surface-subtle);
+  color: var(--color-text);
+}

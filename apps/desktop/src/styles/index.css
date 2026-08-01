@@ -1,0 +1,12 @@
+/* ==========================================================================
+   Global Stylesheet Entry
+   Import order matters: tokens first, base styles last.
+   ========================================================================== */
+
+@import "./tokens/colors.css";
+@import "./tokens/spacing.css";
+@import "./tokens/radius.css";
+@import "./tokens/typography.css";
+@import "./tokens/elevation.css";
+@import "./tokens/transitions.css";
+@import "./base.css";

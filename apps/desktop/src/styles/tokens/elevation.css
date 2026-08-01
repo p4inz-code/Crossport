@@ -1,0 +1,26 @@
+/* ==========================================================================
+   Design Tokens — Elevation
+   Shadows scale from subtle to prominent. Dark theme shadows are deeper.
+   ========================================================================== */
+
+:root {
+  --shadow-xs: 0 1px 2px rgb(15 18 23 / 0.05);
+  --shadow-sm: 0 1px 3px rgb(15 18 23 / 0.08), 0 1px 2px rgb(15 18 23 / 0.04);
+  --shadow-md:
+    0 4px 6px -2px rgb(15 18 23 / 0.07), 0 2px 4px -2px rgb(15 18 23 / 0.06);
+  --shadow-lg:
+    0 10px 15px -3px rgb(15 18 23 / 0.1), 0 4px 6px -4px rgb(15 18 23 / 0.08);
+  --shadow-xl:
+    0 20px 25px -5px rgb(15 18 23 / 0.12), 0 8px 10px -6px rgb(15 18 23 / 0.08);
+}
+
+[data-theme="dark"] {
+  --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-sm: 0 1px 3px rgb(0 0 0 / 0.5), 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow-md:
+    0 4px 6px -2px rgb(0 0 0 / 0.45), 0 2px 4px -2px rgb(0 0 0 / 0.35);
+  --shadow-lg:
+    0 10px 15px -3px rgb(0 0 0 / 0.55), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+  --shadow-xl:
+    0 20px 25px -5px rgb(0 0 0 / 0.6), 0 8px 10px -6px rgb(0 0 0 / 0.45);
+}

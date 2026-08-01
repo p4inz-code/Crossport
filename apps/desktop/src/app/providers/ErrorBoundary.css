@@ -1,0 +1,10 @@
+/* ==========================================================================
+ * ErrorBoundary fallback styles
+ * ========================================================================== */
+
+.error-boundary {
+  display: grid;
+  place-items: center;
+  height: 100dvh;
+  padding: var(--space-6);
+}

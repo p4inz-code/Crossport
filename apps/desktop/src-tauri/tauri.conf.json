@@ -2,7 +2,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "CrossPort",
   "version": "0.1.0",
-  "identifier": "com.tauri.dev",
+  "identifier": "com.crossport.app",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
@@ -13,8 +13,11 @@
     "windows": [
       {
         "title": "CrossPort",
-        "width": 800,
-        "height": 600,
+        "width": 1100,
+        "height": 720,
+        "minWidth": 760,
+        "minHeight": 520,
+        "center": true,
         "resizable": true,
         "fullscreen": false
       }

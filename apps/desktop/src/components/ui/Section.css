@@ -1,0 +1,23 @@
+/* ==========================================================================
+ * Section component styles
+ * ========================================================================== */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+}
+
+.section__title {
+  font-size: var(--text-md);
+  font-weight: var(--font-semibold);
+}
+
+.section__description {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.section__content {
+  margin-top: var(--space-1);
+}

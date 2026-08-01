@@ -1,75 +1,53 @@
-# React + TypeScript + Vite
+# CrossPort Desktop
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The Tauri 2 desktop application for CrossPort — a fast, reliable,
+cross-platform file transfer utility.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Tauri 2 + Rust backend (`src-tauri/`)
+- React 19 + TypeScript + Vite
+- Zustand (state), Zod (validation), Lucide (icons), React Router (routing)
 
-## React Compiler
+## Architecture
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+The frontend is organized into:
 
-## Expanding the ESLint configuration
+| Path             | Purpose                                              |
+| ---------------- | ---------------------------------------------------- |
+| `src/app/`       | Application shell, providers, root routing           |
+| `src/components/`| Reusable UI primitives (Button, Card, EmptyState…)   |
+| `src/features/`  | Feature folders (drives, transfer, history, settings)|
+| `src/hooks/`     | Shared hooks (e.g. `useThemeMode`)                   |
+| `src/layouts/`   | AppShell, TopBar, Sidebar, StatusBar, PageContainer  |
+| `src/lib/`       | Framework-agnostic utilities and constants          |
+| `src/services/`  | Persistence and backend invocation services         |
+| `src/stores/`    | Zustand stores (app, settings, transfer, drive, history) |
+| `src/styles/`    | Design tokens and base styles                       |
+| `src/types/`     | Shared domain types                                 |
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+The Rust backend (`src-tauri/src/`) mirrors the same domains with
+`commands/`, `filesystem/`, `transfer/`, `history/`, `platform/`,
+`settings/`, `models/`, `errors/`, and `state/` modules, all wired through a
+single managed `AppState`.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Development
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+pnpm install
+pnpm dev       # Vite dev server
+pnpm build     # TypeScript + Vite production build
+pnpm lint      # ESLint
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+To run inside Tauri:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+pnpm --filter desktop exec tauri dev
 ```
+
+## Design tokens
+
+All visual decisions flow from the CSS custom properties in
+`src/styles/tokens/`. Never hardcode colors, spacing, radius, typography,
+elevation, or transitions in components — use the tokens.

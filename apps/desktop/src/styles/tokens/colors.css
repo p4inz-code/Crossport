@@ -1,0 +1,92 @@
+/* ==========================================================================
+   Design Tokens — Color
+   Semantic color variables. The dark theme overrides the same variable names
+   under the [data-theme='dark'] selector, which the ThemeProvider applies to
+   <html>. Never reference raw hex values in components — always use tokens.
+   ========================================================================== */
+
+:root {
+  color-scheme: light;
+
+  /* Surfaces */
+  --color-bg: #f6f7f9;
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-surface-subtle: #eef0f3;
+
+  /* Borders */
+  --color-border: #e3e6ea;
+  --color-border-strong: #c9ced6;
+
+  /* Text */
+  --color-text: #181b21;
+  --color-text-muted: #5b616b;
+  --color-text-subtle: #8a909c;
+
+  /* Brand / interaction */
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-primary-active: #1e40af;
+  --color-primary-fg: #ffffff;
+  --color-primary-subtle: #e8effd;
+
+  /* Semantic status */
+  --color-success: #15803d;
+  --color-success-subtle: #dcfce7;
+  --color-warning: #b45309;
+  --color-warning-subtle: #fef3c7;
+  --color-danger: #b91c1c;
+  --color-danger-hover: #991b1b;
+  --color-danger-subtle: #fee2e2;
+
+  /* Focus & overlay */
+  --color-focus-ring: rgb(37 99 235 / 0.45);
+  --color-overlay: rgb(15 18 23 / 0.5);
+
+  /* Status bar / misc */
+  --color-scrollbar-thumb: #c9ced6;
+  --color-scrollbar-thumb-hover: #aeb4bf;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --color-bg: #0f1216;
+  --color-surface: #171b21;
+  --color-surface-raised: #1d2229;
+  --color-surface-subtle: #232a32;
+
+  /* Borders */
+  --color-border: #262d36;
+  --color-border-strong: #37404c;
+
+  /* Text */
+  --color-text: #e8ebef;
+  --color-text-muted: #a3abb6;
+  --color-text-subtle: #6d7684;
+
+  /* Brand / interaction */
+  --color-primary: #3b82f6;
+  --color-primary-hover: #60a5fa;
+  --color-primary-active: #2563eb;
+  --color-primary-fg: #ffffff;
+  --color-primary-subtle: #16233c;
+
+  /* Semantic status */
+  --color-success: #4ade80;
+  --color-success-subtle: #12281c;
+  --color-warning: #fbbf24;
+  --color-warning-subtle: #2b2312;
+  --color-danger: #f87171;
+  --color-danger-hover: #fca5a5;
+  --color-danger-subtle: #321616;
+
+  /* Focus & overlay */
+  --color-focus-ring: rgb(59 130 246 / 0.5);
+  --color-overlay: rgb(0 0 0 / 0.6);
+
+  /* Status bar / misc */
+  --color-scrollbar-thumb: #37404c;
+  --color-scrollbar-thumb-hover: #454f5d;
+}

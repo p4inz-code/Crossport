@@ -1,0 +1,40 @@
+/* ==========================================================================
+ * EmptyState component styles
+ * ========================================================================== */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: var(--space-2);
+  padding: var(--space-10) var(--space-6);
+}
+
+.empty-state__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: var(--radius-full);
+  background-color: var(--color-primary-subtle);
+  color: var(--color-primary);
+  margin-bottom: var(--space-2);
+}
+
+.empty-state__title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+}
+
+.empty-state__description {
+  max-width: 28rem;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.empty-state__action {
+  margin-top: var(--space-4);
+}
