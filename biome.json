@@ -15,7 +15,6 @@
       "!**/dist",
       "!**/target",
       "!**/.vscode",
-      "!**/turbo.json",
       "!**/src-tauri/gen"
     ]
   }

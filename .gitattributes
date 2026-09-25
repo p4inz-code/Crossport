@@ -1,0 +1,14 @@
+# Normalize line endings on checkout for all text files.
+* text=auto
+
+# Explicit binary files.
+*.png binary
+*.icns binary
+*.ico binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf binary
+
+# Shell scripts must keep LF line endings on every platform.
+*.sh text eol=lf

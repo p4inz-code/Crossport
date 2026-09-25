@@ -1,21 +1,36 @@
 /* ==========================================================================
  * Home page
- * Landing view rendered at the root route. Demonstrates the layout and
- * primitives while future features land.
+ * Landing view. Reports what the backend actually told us at startup and
+ * summarizes the Phase 1 foundation without claiming unimplemented features.
  * ========================================================================== */
 
-import { Activity, Layers, ShieldCheck } from "lucide-react";
+import {
+  Activity,
+  Cpu,
+  FolderTree,
+  HardDrive,
+  Layers,
+  ShieldCheck,
+} from "lucide-react";
 
 import { Card, CardBody, CardHeader, Section } from "@/components/ui";
 import { PageContainer } from "@/layouts";
-import { useAppStore, useSettingsStore } from "@/stores";
+import { useAppStore, useSettingsStore, useSystemStore } from "@/stores";
 import "./HomePage.css";
 
 export function HomePage() {
   const appName = useAppStore((state) => state.name);
   const version = useAppStore((state) => state.version);
-  const platform = useAppStore((state) => state.platform);
   const theme = useSettingsStore((state) => state.theme);
+  const info = useSystemStore((state) => state.info);
+  const systemStatus = useSystemStore((state) => state.status);
+
+  const platformValue =
+    info !== null
+      ? `${info.os} · ${info.arch}`
+      : systemStatus === "error"
+        ? "Unavailable in the browser"
+        : "Detecting…";
 
   return (
     <PageContainer
@@ -25,9 +40,12 @@ export function HomePage() {
       <Section title="Application status">
         <div className="home-grid">
           <Card>
-            <CardHeader title="Platform" description="Detected at runtime" />
+            <CardHeader
+              title="Platform"
+              description="Reported by the backend"
+            />
             <CardBody>
-              <p className="home-stat__value">{platform}</p>
+              <p className="home-stat__value">{platformValue}</p>
             </CardBody>
           </Card>
           <Card>
@@ -45,27 +63,51 @@ export function HomePage() {
         </div>
       </Section>
 
-      <Section title="Foundation status">
+      <Section
+        title="Phase 1 foundation"
+        description="What exists today, verified by tests and CI."
+      >
         <div className="home-grid">
           <Card>
             <CardHeader
-              title="Architecture"
-              description="Feature-based frontend with shared stores and services"
+              title="Backend-owned settings"
+              description="Validated, persisted in Rust, reached over typed IPC"
               action={<ShieldCheck size={20} strokeWidth={1.75} />}
             />
           </Card>
           <Card>
             <CardHeader
-              title="Routing"
-              description="React Router foundation with lazy-loadable pages"
-              action={<Layers size={20} strokeWidth={1.75} />}
+              title="Structured errors"
+              description="Every failure crosses the boundary as code + message"
+              action={<Activity size={20} strokeWidth={1.75} />}
             />
           </Card>
           <Card>
             <CardHeader
-              title="Backend"
-              description="Modular Rust command layer ready for features"
-              action={<Activity size={20} strokeWidth={1.75} />}
+              title="Drive enumeration"
+              description="Storage roots discovered on the host and validated"
+              action={<HardDrive size={20} strokeWidth={1.75} />}
+            />
+          </Card>
+          <Card>
+            <CardHeader
+              title="Filesystem foundation"
+              description="Path normalization, directory validation, metadata"
+              action={<FolderTree size={20} strokeWidth={1.75} />}
+            />
+          </Card>
+          <Card>
+            <CardHeader
+              title="Platform abstraction"
+              description="OS facts and app directories resolved in one module"
+              action={<Cpu size={20} strokeWidth={1.75} />}
+            />
+          </Card>
+          <Card>
+            <CardHeader
+              title="Native folder picker"
+              description="Dialog hosted by Rust; the webview holds no fs capability"
+              action={<Layers size={20} strokeWidth={1.75} />}
             />
           </Card>
         </div>

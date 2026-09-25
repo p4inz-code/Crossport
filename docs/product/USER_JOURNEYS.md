@@ -1,3 +1,4 @@
+> **Status: roadmap — mostly not yet implemented.** This document describes the planned product journeys; the repository currently implements the Phase 1 foundation only (settings and drive enumeration, no transfers yet).
 # CrossPort User Journeys
 
 Version: 1.0

@@ -1,0 +1,63 @@
+/* ==========================================================================
+ * Drives page styles
+ * ========================================================================== */
+
+.drives-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.drives-list__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+}
+
+.drives-list__label {
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+}
+
+.drives-list__root {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.path-hint {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.path-error {
+  font-size: var(--text-sm);
+  color: var(--color-danger);
+}
+
+.path-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.path-details__row {
+  display: grid;
+  grid-template-columns: 7rem 1fr;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.path-details__row dt {
+  color: var(--color-text-muted);
+}
+
+.path-details__row dd {
+  color: var(--color-text);
+  word-break: break-all;
+}

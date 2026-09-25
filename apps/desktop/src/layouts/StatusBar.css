@@ -24,20 +24,6 @@
   gap: var(--space-1);
 }
 
-.status-bar__dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: var(--radius-full);
-}
-
-.status-bar__dot--ready {
-  background-color: var(--color-success);
-}
-
-.status-bar__dot--busy {
-  background-color: var(--color-warning);
-}
-
-.status-bar__dot--error {
-  background-color: var(--color-danger);
+.status-bar__platform {
+  text-transform: capitalize;
 }

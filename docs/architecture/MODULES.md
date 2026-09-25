@@ -1,201 +1,56 @@
 # Module Architecture
 
-Version: 1.0
-
----
-
-# Philosophy
-
-Every package exists for one reason.
-
-If a package gains multiple unrelated responsibilities, it should be split.
-
----
-
-# Core
-
-Coordinates application behavior.
-
-Owns no platform-specific implementation.
-
----
-
-# Filesystem
-
-Provides a unified interface for filesystem operations.
-
-Responsibilities:
-
-- Drive discovery
-- Directory traversal
-- File metadata
-- Permissions abstraction
-- Filesystem capability detection
-
----
-
-# Transfer
-
-Responsible for:
-
-- Copy
-- Move
-- Queue
-- Resume
-- Pause
-- Retry
-- Conflict handling
-
-Transfer owns no UI.
-
----
-
-# Verification
-
-Responsible for validating completed transfers.
-
-Supports:
-
-- Metadata verification
-- Checksum verification
-- Future verification strategies
-
----
-
-# History
-
-Stores completed operations.
-
-Responsible for:
-
-- Recent transfers
-- Transfer logs
-- Retention policy
-
----
-
-# Notifications
-
-Produces user-visible notifications.
-
-Never performs business logic.
-
----
-
-# Updates
-
-Checks for new releases.
-
-Handles:
-
-- Version comparison
-- Release information
-- User-controlled updates
-
-No automatic installation without user approval.
-
----
-
-# Platform
-
-Contains operating-system-specific implementations.
-
-Submodules:
-
-- Windows
-- macOS
-- Linux
-
-No business logic should exist here.
-
----
-
-# Settings
-
-Responsible only for configuration.
-
-Settings never perform application logic.
-
----
-
-# UI Kit
-
-Reusable visual components.
-
-Contains:
-
-- Buttons
-- Cards
-- Dialogs
-- Inputs
-- Layout
-- Navigation
-
-UI Kit contains zero business logic.
-
----
-
-# Shared
-
-Reusable code used by multiple packages.
-
-Examples:
-
-- Constants
-- Helpers
-- Common interfaces
-- Shared models
-
-Shared must remain lightweight.
-
----
-
-# Dependency Rules
-
-Allowed:
-
-UI
-
-↓
-
-Core
-
-↓
-
-Transfer
-
-↓
-
-Filesystem
-
-↓
-
-Platform
-
-Forbidden:
-
-Platform
-
-↓
-
-UI
-
-Transfer
-
-↓
-
-UI
-
-Filesystem
-
-↓
-
-Notifications
-
-Settings
-
-↓
-
-Transfer
-
-Circular dependencies are never permitted.
+Version: 3.0
+Status: Approved
+
+This document describes the module structure that exists today. The repository
+is a single Tauri application under `apps/desktop/`; there is no multi-package
+workspace. Modules are organized within the app, not as separate packages.
+
+## Frontend (`apps/desktop/src`)
+
+| Module | Responsibility | Dependency rules |
+| --- | --- | --- |
+| `app/` | Application shell, providers, root routing | Depends on layouts, components, stores, features |
+| `features/` | Implemented feature folders: `drives`, `settings` | Each feature owns its pages; no cross-feature imports |
+| `components/ui/` | Reusable UI primitives (Button, Card, EmptyState, …) | No business logic; depends only on `lib`, tokens |
+| `layouts/` | AppShell, TopBar, Sidebar, StatusBar, PageContainer | Depends on components, stores, lib |
+| `stores/` | Zustand stores (app, system, drives, settings) | Owns client state; talks to services |
+| `services/` | IPC transport (`ipc.ts`), per-domain services, validated storage | The only module allowed to call `invoke` |
+| `hooks/` | Shared hooks (e.g. `useThemeMode`) | Depends on stores, types |
+| `lib/` | Framework-agnostic utilities, constants, formatters | No dependencies on the rest of the app |
+| `types/` | Domain types and zod schemas mirroring Rust payloads | No runtime dependencies |
+| `styles/` | Design tokens and base styles | Global by design |
+
+Dependency direction is always inward: features → stores → services → types.
+Components never import stores directly; they receive data through props.
+
+Feature folders exist only for implemented behavior. Transfers and history are
+Phase 3 work and have no scaffolding.
+
+## Backend (`apps/desktop/src-tauri/src`)
+
+| Module | Responsibility |
+| --- | --- |
+| `commands/` | Tauri command layer, one submodule per domain (`settings`, `system`, `drives`, `filesystem`, `dialog`) |
+| `platform/` | Platform abstraction: `Platform`/`SystemInfo`, app directories (`AppPaths`), drive-root enumeration |
+| `filesystem/` | Path normalization and directory validation (`path.rs`), metadata inspection (`metadata.rs`) |
+| `settings/` | The single source of truth for user preferences; validation and file persistence |
+| `errors/` | `AppError` with structured `code`/`message` serialization |
+| `state/` | Managed `AppState` (config, platform, current settings) |
+| `config.rs` | Immutable application configuration |
+| `logging.rs` | Log plugin configuration (stdout + rotating log file) |
+
+## Rules
+
+- Business logic never lives in UI components.
+- The frontend never touches the filesystem or the OS; all of it stays in
+  Rust behind typed commands, so the webview capability surface stays minimal.
+- Platform differences are isolated in `platform/`; no other module branches on
+  `cfg(windows)` or reads OS constants.
+- Settings have exactly one owner (the backend). The webview localStorage
+  fallback exists only for browser dev mode and is schema-validated.
+- Errors are structured on both sides: `AppError` in Rust, `IpcError` in the
+  frontend, with the code list duplicated deliberately and asserted by tests.
+- Circular imports are forbidden. Every import crosses at most one layer
+  inward.

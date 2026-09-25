@@ -1,17 +1,12 @@
 /* ==========================================================================
  * Sidebar component
  * Primary navigation rail. Nav items and their icons are defined together
- * here so adding a route can never leave an icon missing.
+ * here so adding a route can never leave an icon missing. Only implemented
+ * pages are listed.
  * ========================================================================== */
 
 import type { LucideIcon } from "lucide-react";
-import {
-  ArrowLeftRight,
-  HardDrive,
-  History,
-  Home,
-  Settings,
-} from "lucide-react";
+import { HardDrive, Home, Settings } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
 import { cn } from "@/lib";
@@ -29,8 +24,6 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { to: "/", label: "Home", icon: Home, end: true },
   { to: "/drives", label: "Drives", icon: HardDrive },
-  { to: "/transfers", label: "Transfers", icon: ArrowLeftRight },
-  { to: "/history", label: "History", icon: History },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -69,7 +62,7 @@ export function Sidebar() {
       </nav>
 
       <div className="sidebar__footer">
-        <p className="sidebar__hint">Application foundation ready</p>
+        <p className="sidebar__hint">Phase 1 foundation</p>
       </div>
     </aside>
   );

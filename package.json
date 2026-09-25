@@ -14,10 +14,10 @@
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
     "format": "biome format --write .",
-    "check": "biome check ."
+    "check": "biome check .",
+    "check:versions": "bash scripts/check-versions.sh"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.0.0",
-    "typescript": "^5.8.0"
+    "@biomejs/biome": "^2.0.0"
   }
 }

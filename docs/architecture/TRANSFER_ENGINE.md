@@ -1,3 +1,4 @@
+> **Status: future phase — not yet implemented.** This document describes the planned design for a later phase; the repository currently implements the Phase 1 foundation (settings, platform, filesystem, and drive enumeration).
 # CrossPort Transfer Engine
 
 Version: 1.0

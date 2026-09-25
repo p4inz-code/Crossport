@@ -1,40 +1,32 @@
 /* ==========================================================================
  * StatusBar component
- * Bottom status strip showing application state and version.
+ * Bottom status strip showing the host platform reported by the backend and
+ * the installed version. Outside the desktop app the platform is unknown by
+ * definition, so the strip says so instead of guessing.
  * ========================================================================== */
 
 import { APP_NAME } from "@/lib";
-import { useAppStore } from "@/stores";
+import { useAppStore, useSystemStore } from "@/stores";
 import "./StatusBar.css";
 
-const STATUS_META = {
-  ready: { label: "Ready", className: "status-bar__dot--ready" },
-  busy: { label: "Working", className: "status-bar__dot--busy" },
-  error: { label: "Error", className: "status-bar__dot--error" },
-} as const;
-
 export function StatusBar() {
-  const status = useAppStore((state) => state.status);
   const version = useAppStore((state) => state.version);
-  const platform = useAppStore((state) => state.platform);
+  const info = useSystemStore((state) => state.info);
+  const status = useSystemStore((state) => state.status);
 
-  const statusMeta = STATUS_META[status];
+  const platformLabel =
+    info === null ? (status === "error" ? "browser preview" : "…") : info.os;
 
   return (
     <footer className="status-bar">
       <div className="status-bar__item">
-        <span
-          className={`status-bar__dot ${statusMeta.className}`}
-          aria-hidden="true"
-        />
-        <span>{statusMeta.label}</span>
+        <span className="status-bar__platform">{platformLabel}</span>
+        {info !== null ? <span>{info.arch}</span> : null}
       </div>
       <div className="status-bar__item status-bar__item--meta">
-        <span>{platform}</span>
+        <span>{APP_NAME}</span>
         <span aria-hidden="true">·</span>
-        <span>
-          {APP_NAME} v{version}
-        </span>
+        <span>v{version}</span>
       </div>
     </footer>
   );

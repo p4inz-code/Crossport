@@ -3,6 +3,9 @@
  * Returns the current theme mode and the mode resolved against the OS
  * preference, plus a setter. The resolved theme is applied to the document
  * by the ThemeProvider.
+ *
+ * The media-query helpers live at module scope so their identities are
+ * stable; `useSyncExternalStore` re-subscribes whenever `subscribe` changes.
  * ========================================================================== */
 
 import { useSyncExternalStore } from "react";
