@@ -4,8 +4,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as drivesService from "@/services/drives-service";
 import * as filesystemService from "@/services/filesystem-service";
 import { IpcError } from "@/services/ipc";
-import { useBrowserStore, useDrivesStore } from "@/stores";
-import { makeEntry, makeListing, makeVolume } from "@/test/fixtures";
+import * as transferService from "@/services/transfer-service";
+import { useBrowserStore, useDrivesStore, useTransferStore } from "@/stores";
+import {
+  makeEntry,
+  makeListing,
+  makeTransferPreview,
+  makeTransferSnapshot,
+  makeVolume,
+} from "@/test/fixtures";
 import type { DirectoryListing } from "@/types";
 import { DrivesPage } from "./DrivesPage";
 
@@ -14,10 +21,24 @@ vi.mock("@/services/filesystem-service", () => ({
   listDirectory: vi.fn(),
   pickDirectory: vi.fn(),
 }));
+vi.mock("@/services/transfer-service", () => ({
+  cancelTransfer: vi.fn(),
+  clearFinishedTransfers: vi.fn(),
+  getTransfer: vi.fn(),
+  listTransfers: vi.fn(),
+  pauseTransfer: vi.fn(),
+  planTransfer: vi.fn(),
+  removeTransfer: vi.fn(),
+  resumeTransfer: vi.fn(),
+  startTransfer: vi.fn(),
+  subscribeToTransferUpdates: vi.fn(),
+}));
 
 const mockedListDrives = vi.mocked(drivesService.listDrives);
 const mockedListDirectory = vi.mocked(filesystemService.listDirectory);
 const mockedPickDirectory = vi.mocked(filesystemService.pickDirectory);
+const mockedPlanTransfer = vi.mocked(transferService.planTransfer);
+const mockedStartTransfer = vi.mocked(transferService.startTransfer);
 
 const GIB = 1024 ** 3;
 
@@ -67,6 +88,14 @@ describe("DrivesPage", () => {
     vi.clearAllMocks();
     useDrivesStore.setState({ drives: [], status: "idle", error: null });
     useBrowserStore.getState().close();
+    useTransferStore.setState({
+      jobs: [],
+      status: "idle",
+      error: null,
+      pending: [],
+      failures: {},
+      dismissed: [],
+    });
     mockedPickDirectory.mockResolvedValue(null);
   });
 
@@ -322,5 +351,170 @@ describe("DrivesPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Refresh volumes" }));
 
     expect(await screen.findByText("MEDIA")).toBeInTheDocument();
+  });
+});
+
+describe("DrivesPage transfer composition", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useDrivesStore.setState({ drives: [], status: "idle", error: null });
+    useBrowserStore.getState().close();
+    useTransferStore.setState({
+      jobs: [],
+      status: "idle",
+      error: null,
+      pending: [],
+      failures: {},
+      dismissed: [],
+    });
+    mockedListDrives.mockResolvedValue([MEDIA]);
+    mockedListDirectory.mockResolvedValue(MEDIA_ROOT);
+  });
+
+  /** Opens D:\ and checks the Photos folder. */
+  async function checkPhotos(): Promise<void> {
+    render(<DrivesPage />);
+    fireEvent.click(await screen.findByRole("button", { name: /MEDIA/ }));
+    fireEvent.click(
+      await screen.findByRole("checkbox", { name: "Select Photos" }),
+    );
+  }
+
+  it("plans the transfer before offering to start it", async () => {
+    mockedPickDirectory.mockResolvedValue("D:\\Backup");
+    mockedPlanTransfer.mockResolvedValue(makeTransferPreview());
+
+    await checkPhotos();
+    fireEvent.click(screen.getByRole("button", { name: /Copy to…/ }));
+
+    await waitFor(() => {
+      expect(mockedPlanTransfer).toHaveBeenCalledWith({
+        sources: ["D:\\Photos"],
+        destination: "D:\\Backup",
+        operation: "copy",
+        conflict: "skip",
+      });
+    });
+
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("Copy 1 item");
+    expect(dialog).toHaveTextContent("4 KB");
+    expect(mockedStartTransfer).not.toHaveBeenCalled();
+  });
+
+  it("does nothing when the destination dialog is cancelled", async () => {
+    mockedPickDirectory.mockResolvedValue(null);
+
+    await checkPhotos();
+    fireEvent.click(screen.getByRole("button", { name: /Move to…/ }));
+
+    await waitFor(() => {
+      expect(mockedPickDirectory).toHaveBeenCalledTimes(1);
+    });
+    expect(mockedPlanTransfer).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("asks the backend to plan again for a different conflict strategy", async () => {
+    mockedPickDirectory.mockResolvedValue("D:\\Backup");
+    mockedPlanTransfer.mockResolvedValue(makeTransferPreview());
+
+    await checkPhotos();
+    fireEvent.click(screen.getByRole("button", { name: /Copy to…/ }));
+    await screen.findByRole("dialog");
+
+    mockedPlanTransfer.mockResolvedValue(
+      makeTransferPreview({ conflict: "rename" }),
+    );
+    fireEvent.click(screen.getByRole("radio", { name: /Keep both/ }));
+
+    await waitFor(() => {
+      expect(mockedPlanTransfer).toHaveBeenCalledTimes(2);
+    });
+    expect(mockedPlanTransfer).toHaveBeenLastCalledWith({
+      sources: ["D:\\Photos"],
+      destination: "D:\\Backup",
+      operation: "copy",
+      conflict: "rename",
+    });
+    expect(screen.getByRole("radio", { name: /Keep both/ })).toBeChecked();
+  });
+
+  it("queues the job on confirmation and adopts its snapshot", async () => {
+    mockedPickDirectory.mockResolvedValue("D:\\Backup");
+    mockedPlanTransfer.mockResolvedValue(makeTransferPreview());
+    const snapshot = makeTransferSnapshot({ status: "queued" });
+    mockedStartTransfer.mockResolvedValue(snapshot);
+
+    await checkPhotos();
+    fireEvent.click(screen.getByRole("button", { name: /Copy to…/ }));
+    await screen.findByRole("dialog");
+
+    fireEvent.click(screen.getByRole("button", { name: "Start copy" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+    expect(mockedStartTransfer).toHaveBeenCalledWith({
+      sources: ["D:\\Photos"],
+      destination: "D:\\Backup",
+      operation: "copy",
+      conflict: "skip",
+    });
+    expect(useTransferStore.getState().jobs.map((job) => job.id)).toEqual([
+      snapshot.id,
+    ]);
+    expect(screen.getByText(/1 item queued for copy/)).toBeInTheDocument();
+  });
+
+  it("explains a refused request instead of opening a dialog", async () => {
+    mockedPickDirectory.mockResolvedValue("D:\\Photos\\Backup");
+    mockedPlanTransfer.mockRejectedValue(
+      new IpcError(
+        "unsafe_relationship",
+        "the destination is inside the source",
+      ),
+    );
+
+    await checkPhotos();
+    fireEvent.click(screen.getByRole("button", { name: /Copy to…/ }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "the destination is inside the source",
+    );
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("keeps the dialog open when starting is refused", async () => {
+    mockedPickDirectory.mockResolvedValue("D:\\Backup");
+    mockedPlanTransfer.mockResolvedValue(makeTransferPreview());
+    mockedStartTransfer.mockRejectedValue(
+      new IpcError("not_enough_space", "not enough space: 4 KB needed"),
+    );
+
+    await checkPhotos();
+    fireEvent.click(screen.getByRole("button", { name: /Copy to…/ }));
+    await screen.findByRole("dialog");
+    fireEvent.click(screen.getByRole("button", { name: "Start copy" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "not enough space: 4 KB needed",
+    );
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(useTransferStore.getState().jobs).toEqual([]);
+  });
+
+  it("closes the dialog without starting anything", async () => {
+    mockedPickDirectory.mockResolvedValue("D:\\Backup");
+    mockedPlanTransfer.mockResolvedValue(makeTransferPreview());
+
+    await checkPhotos();
+    fireEvent.click(screen.getByRole("button", { name: /Move to…/ }));
+    await screen.findByRole("dialog");
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(mockedStartTransfer).not.toHaveBeenCalled();
   });
 });

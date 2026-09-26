@@ -22,8 +22,13 @@ tauri = { version = "2.11.3", features = [] }
 tauri-plugin-dialog = "2"
 tauri-plugin-log = "2"
 
-# Native drive-letter enumeration. Kept to the single API the platform
-# abstraction needs; capacity and volume kinds arrive with the Phase 2 drives
-# feature.
+# Windows API surface, kept to what the platform abstraction actually needs:
+# drive-letter enumeration and volume queries (Phase 2) plus the current
+# process handle and its memory counters (used by the transfer suite to prove
+# that copying a large file does not grow this process's memory).
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.60", features = ["Win32_Storage_FileSystem"] }
+windows-sys = { version = "0.60", features = [
+    "Win32_Storage_FileSystem",
+    "Win32_System_ProcessStatus",
+    "Win32_System_Threading",
+] }

@@ -5,7 +5,7 @@
  * directly, so a future target only needs to be validated here.
  * ========================================================================== */
 
-use std::path::PathBuf;
+use std::path::{Component, Path, PathBuf};
 
 use tauri::Manager;
 
@@ -41,6 +41,41 @@ fn resolve_one(what: &str, result: tauri::Result<PathBuf>) -> AppResult<PathBuf>
     result.map_err(|error| AppError::Internal(format!("failed to resolve {what}: {error}")))
 }
 
+/// Comparison key for one path component.
+///
+/// Windows paths are case-insensitive, so the key is folded there; on every
+/// other target the component is compared exactly. The folded form is only
+/// ever used for comparison, never to build a path.
+fn component_key(component: Component<'_>) -> String {
+    let value = component.as_os_str().to_string_lossy().into_owned();
+    if cfg!(windows) {
+        value.to_lowercase()
+    } else {
+        value
+    }
+}
+
+fn components(path: &Path) -> Vec<String> {
+    path.components().map(component_key).collect()
+}
+
+/// Whether `candidate` is `parent` itself or lives inside it.
+///
+/// Purely lexical and component-wise: no filesystem access, and both paths must
+/// already be normalized (absolute, no `.`, no `..`, no redundant separators).
+/// Case-insensitive on Windows, so a path the user typed as `c:\data` still
+/// matches the `C:\Data` the backend resolved.
+pub fn path_contains(parent: &Path, candidate: &Path) -> bool {
+    let parent = components(parent);
+    let candidate = components(candidate);
+    parent.len() <= candidate.len() && parent.iter().zip(candidate.iter()).all(|(a, b)| a == b)
+}
+
+/// Whether two normalized paths name the same location on this platform.
+pub fn same_path(left: &Path, right: &Path) -> bool {
+    components(left) == components(right)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -64,5 +99,41 @@ mod tests {
             log_dir: PathBuf::from("root").join("logs"),
         };
         assert_ne!(paths.config_dir, paths.log_dir);
+    }
+
+    #[test]
+    fn path_contains_accepts_the_path_itself_and_its_children() {
+        let base = if cfg!(windows) { "C:\\Data" } else { "/data" };
+        let child = Path::new(base).join("nested").join("file.txt");
+
+        assert!(path_contains(Path::new(base), Path::new(base)));
+        assert!(path_contains(Path::new(base), &child));
+        assert!(!path_contains(&child, Path::new(base)));
+    }
+
+    #[test]
+    fn path_contains_rejects_sibling_prefixes() {
+        let base = if cfg!(windows) { "C:\\Data" } else { "/data" };
+        let sibling = if cfg!(windows) {
+            "C:\\Database"
+        } else {
+            "/database"
+        };
+
+        assert!(
+            !path_contains(Path::new(base), Path::new(sibling)),
+            "a shared name prefix is not containment"
+        );
+    }
+
+    #[test]
+    fn same_path_follows_platform_case_rules() {
+        if cfg!(windows) {
+            assert!(same_path(Path::new("C:\\Data"), Path::new("c:\\data")));
+            assert!(!same_path(Path::new("C:\\Data"), Path::new("C:\\Data2")));
+        } else {
+            assert!(same_path(Path::new("/data"), Path::new("/data")));
+            assert!(!same_path(Path::new("/data"), Path::new("/Data")));
+        }
     }
 }

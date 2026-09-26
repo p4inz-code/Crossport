@@ -2,6 +2,15 @@
  * Drives page styles
  * ========================================================================== */
 
+.storage-notice {
+  margin-bottom: var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-success-subtle);
+  color: var(--color-success);
+  font-size: var(--text-sm);
+}
+
 .storage-layout {
   display: grid;
   grid-template-columns: minmax(15rem, 18rem) minmax(0, 1fr);

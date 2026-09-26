@@ -1,0 +1,9 @@
+/* ==========================================================================
+ * Transfers page styles
+ * ========================================================================== */
+
+.transfers-page .page-container__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}

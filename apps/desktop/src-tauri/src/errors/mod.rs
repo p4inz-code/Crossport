@@ -30,6 +30,20 @@ pub enum AppError {
     PermissionDenied(String),
     /// A platform or filesystem operation failed.
     Io(String),
+    /// A transfer request was rejected before it started because the source
+    /// and destination relationship is unsafe (the destination is the source,
+    /// or it lives inside it).
+    UnsafeRelationship(String),
+    /// The destination volume cannot hold the requested transfer.
+    NotEnoughSpace(String),
+    /// The destination ran out of space while data was being written.
+    DiskFull(String),
+    /// A transfer request covers more entries than the engine will plan.
+    TooManyItems(String),
+    /// No transfer job with that identifier is known to the engine.
+    TransferNotFound(String),
+    /// A transfer job finished without completing every item.
+    TransferFailed(String),
     /// An internal operation failed with a contextual message.
     Internal(String),
 }
@@ -43,6 +57,12 @@ impl AppError {
             Self::PathNotDirectory(_) => "path_not_directory",
             Self::PermissionDenied(_) => "permission_denied",
             Self::Io(_) => "io",
+            Self::UnsafeRelationship(_) => "unsafe_relationship",
+            Self::NotEnoughSpace(_) => "not_enough_space",
+            Self::DiskFull(_) => "disk_full",
+            Self::TooManyItems(_) => "too_many_items",
+            Self::TransferNotFound(_) => "transfer_not_found",
+            Self::TransferFailed(_) => "transfer_failed",
             Self::Internal(_) => "internal",
         }
     }
@@ -56,6 +76,14 @@ impl std::fmt::Display for AppError {
             Self::PathNotDirectory(message) => write!(f, "not a directory: {message}"),
             Self::PermissionDenied(message) => write!(f, "permission denied: {message}"),
             Self::Io(message) => write!(f, "i/o error: {message}"),
+            Self::UnsafeRelationship(message) => {
+                write!(f, "unsafe source/destination relationship: {message}")
+            }
+            Self::NotEnoughSpace(message) => write!(f, "not enough space: {message}"),
+            Self::DiskFull(message) => write!(f, "the destination ran out of space: {message}"),
+            Self::TooManyItems(message) => write!(f, "too many items: {message}"),
+            Self::TransferNotFound(message) => write!(f, "transfer not found: {message}"),
+            Self::TransferFailed(message) => write!(f, "transfer failed: {message}"),
             Self::Internal(message) => write!(f, "internal error: {message}"),
         }
     }
@@ -129,6 +157,24 @@ mod tests {
             "permission_denied"
         );
         assert_eq!(AppError::Io("x".into()).code(), "io");
+        assert_eq!(
+            AppError::UnsafeRelationship("x".into()).code(),
+            "unsafe_relationship"
+        );
+        assert_eq!(
+            AppError::NotEnoughSpace("x".into()).code(),
+            "not_enough_space"
+        );
+        assert_eq!(AppError::DiskFull("x".into()).code(), "disk_full");
+        assert_eq!(AppError::TooManyItems("x".into()).code(), "too_many_items");
+        assert_eq!(
+            AppError::TransferNotFound("x".into()).code(),
+            "transfer_not_found"
+        );
+        assert_eq!(
+            AppError::TransferFailed("x".into()).code(),
+            "transfer_failed"
+        );
         assert_eq!(AppError::Internal("x".into()).code(), "internal");
     }
 
@@ -140,6 +186,12 @@ mod tests {
             AppError::PathNotDirectory("x".into()),
             AppError::PermissionDenied("x".into()),
             AppError::Io("x".into()),
+            AppError::UnsafeRelationship("x".into()),
+            AppError::NotEnoughSpace("x".into()),
+            AppError::DiskFull("x".into()),
+            AppError::TooManyItems("x".into()),
+            AppError::TransferNotFound("x".into()),
+            AppError::TransferFailed("x".into()),
             AppError::Internal("x".into()),
         ];
         let mut codes: Vec<&str> = variants.iter().map(AppError::code).collect();

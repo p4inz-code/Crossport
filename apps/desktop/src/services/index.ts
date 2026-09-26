@@ -28,3 +28,16 @@ export {
 export { getSettings, updateSettings } from "./settings-service";
 export { readSettingsFromLocal, writeSettingsToLocal } from "./storage";
 export { getSystemInfo } from "./system-service";
+export {
+  cancelTransfer,
+  clearFinishedTransfers,
+  getTransfer,
+  listTransfers,
+  pauseTransfer,
+  planTransfer,
+  removeTransfer,
+  resumeTransfer,
+  startTransfer,
+  subscribeToTransferUpdates,
+  TRANSFER_EVENT,
+} from "./transfer-service";

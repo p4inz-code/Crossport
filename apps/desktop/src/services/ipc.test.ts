@@ -35,6 +35,12 @@ describe("error contract", () => {
       "path_not_directory",
       "permission_denied",
       "io",
+      "unsafe_relationship",
+      "not_enough_space",
+      "disk_full",
+      "too_many_items",
+      "transfer_not_found",
+      "transfer_failed",
       "internal",
     ]);
   });

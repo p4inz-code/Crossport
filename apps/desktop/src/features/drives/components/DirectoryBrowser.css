@@ -124,6 +124,11 @@
   background-color: var(--color-primary-subtle);
 }
 
+.browser__cell--select {
+  width: 2.25rem;
+  text-align: center;
+}
+
 .browser__cell--name {
   width: 50%;
   font-weight: var(--font-regular);
@@ -189,4 +194,12 @@
 .browser__status strong {
   color: var(--color-text);
   font-weight: var(--font-medium);
+}
+
+.browser__selection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  color: var(--color-text);
 }

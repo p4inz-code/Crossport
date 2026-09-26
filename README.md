@@ -6,8 +6,10 @@ Free forever. Offline first. No accounts, no ads, no telemetry.
 
 ## Status
 
-Phase 2 (volumes and filesystem browsing) is complete. The repository currently
-provides:
+Phase 3 (the transfer engine) is complete: copying, moving, queues, progress,
+pause/resume/cancel, and conflict resolution are implemented. Transfer history,
+crash recovery, and post-transfer verification are still ahead. The repository
+currently provides:
 
 - A Tauri 2 desktop shell (React 19 + TypeScript + Vite frontend, Rust backend)
 - A design-token-driven UI system with light/dark/system themes
@@ -25,12 +27,23 @@ provides:
   single-directory listing)
 - A platform abstraction (OS identity, app directories, volumes)
 - A native folder picker hosted in Rust
+- A transfer engine: copy and move files and folders recursively, with a queue
+  that runs jobs in order, live byte/speed/ETA progress, pause, resume, cancel
+  with partial-output cleanup, and three conflict strategies (Replace, Skip,
+  Rename)
+- Transfer safety: destination and source validation in Rust, refusal to
+  transfer into itself, free-space checks, symlinks and reparse points reported
+  but never followed or deleted, and moves that keep the source when anything
+  failed
+- A transfer surface: multi-select in the browser, a composer that shows the
+  backend's dry run before anything is queued, and a queue page with per-job
+  progress, issues, and controls
 - Windows-safe production logging (stdout + rotating per-app log file)
 - A restrictive CSP and a minimal Tauri capability set
 - Real test suites (Vitest + `cargo test`) and CI
 
-Transfers and history are **not** implemented yet — they are Phase 3 work and
-are deliberately absent rather than stubbed. See
+Transfer history and post-transfer verification are **not** implemented yet —
+they are deliberately absent rather than stubbed. See
 [`ROADMAP.md`](ROADMAP.md) and [`docs/product/FEATURE_SPECIFICATION.md`](docs/product/FEATURE_SPECIFICATION.md).
 
 ## Repository layout

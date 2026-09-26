@@ -112,6 +112,47 @@ export function isOpenableDirectory(entry: DirectoryEntry): boolean {
 }
 
 /**
+ * Whether the transfer engine will copy an entry.
+ *
+ * Links and other special entries are reported by the engine but never
+ * followed or copied, so the browser says so before the user asks for a
+ * transfer rather than after.
+ */
+export function isCopyable(entry: DirectoryEntry): boolean {
+  return entry.kind === "directory" || entry.kind === "file";
+}
+
+/**
+ * `3 items · 12.4 MB` for a selection, without inventing sizes the backend did
+ * not report, and naming anything that cannot be copied.
+ */
+export function selectionSummary(entries: DirectoryEntry[]): string {
+  const count = entries.length;
+  const parts = [`${count} ${count === 1 ? "item" : "items"}`];
+
+  const measured = entries.filter((entry) => entry.sizeBytes !== null);
+  if (measured.length === 0) {
+    parts.push("size not reported");
+  } else {
+    const bytes = measured.reduce(
+      (total, entry) => total + (entry.sizeBytes ?? 0),
+      0,
+    );
+    const partial = measured.length < count ? "at least " : "";
+    parts.push(`${partial}${formatBytes(bytes)}`);
+  }
+
+  const skipped = entries.filter((entry) => !isCopyable(entry)).length;
+  if (skipped > 0) {
+    parts.push(
+      `${skipped} ${skipped === 1 ? "entry is" : "entries are"} not copied`,
+    );
+  }
+
+  return parts.join(" · ");
+}
+
+/**
  * The volume a location lives in, or `null` when no reported volume contains
  * it (a UNC path, or a drive that was unplugged since the last refresh).
  *

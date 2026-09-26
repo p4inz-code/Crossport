@@ -7,3 +7,4 @@ export { useBrowserStore } from "./browser-store";
 export { useDrivesStore } from "./drives-store";
 export { useSettingsStore } from "./settings-store";
 export { useSystemStore } from "./system-store";
+export { useTransferStore } from "./transfer-store";

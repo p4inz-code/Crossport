@@ -31,7 +31,6 @@ impl Platform {
     pub fn current() -> Self {
         Self::from_os(std::env::consts::OS)
     }
-
     /// Maps a `std::env::consts::OS` value onto a [`Platform`].
     pub fn from_os(os: &str) -> Self {
         match os {
@@ -51,6 +50,93 @@ impl Platform {
             Self::Other => "other",
         }
     }
+}
+
+/// Windows `FILE_ATTRIBUTE_REPARSE_POINT`. Spelled out here because the
+/// `windows-sys` constant lives behind a much larger feature gate than this
+/// crate needs.
+#[cfg(windows)]
+const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x0000_0400;
+
+/// Whether a directory entry is a symlink, junction, or another reparse point.
+///
+/// The transfer engine reports these entries but never follows, copies, or
+/// removes what they point at. Windows hides junctions and mount points behind
+/// the same reparse-point attribute, and `std::fs::FileType::is_symlink` only
+/// reports true symlinks there, so the attribute is the honest check.
+pub fn is_reparse_point(metadata: &std::fs::Metadata) -> bool {
+    if metadata.file_type().is_symlink() {
+        return true;
+    }
+
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0
+    }
+
+    #[cfg(not(windows))]
+    {
+        false
+    }
+}
+
+/// Raw OS error code the host reports when a write runs out of space:
+/// `ERROR_DISK_FULL` on Windows, `ENOSPC` on Unix. Spelled out here instead of
+/// matching on `io::ErrorKind` so the crate keeps building on its declared
+/// minimum Rust version.
+#[cfg(windows)]
+const DISK_FULL_CODE: i32 = 112;
+#[cfg(not(windows))]
+const DISK_FULL_CODE: i32 = 28;
+
+/// Whether an OS error means the destination ran out of space.
+///
+/// Writes that exhaust a volume are reported per platform; this is the one
+/// place that knows how each host spells it.
+pub fn is_disk_full_error(error: &std::io::Error) -> bool {
+    error.raw_os_error() == Some(DISK_FULL_CODE)
+}
+
+/// Working set of this process in bytes, when the host reports it.
+///
+/// Used by the transfer sanity suite to prove that copying a large file does
+/// not grow this process's memory. `None` means the host did not report a
+/// figure, which is never treated as zero.
+///
+/// Compiled only for tests: the application itself never measures its own
+/// memory, so the release binary carries no measurement code.
+#[cfg(test)]
+pub fn memory_usage_bytes() -> Option<u64> {
+    memory_usage_bytes_platform()
+}
+
+/// Windows: the kernel reports the working set directly for the current
+/// process, so no handle to another process is needed.
+#[cfg(all(test, windows))]
+fn memory_usage_bytes_platform() -> Option<u64> {
+    use windows_sys::Win32::System::ProcessStatus::{
+        K32GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS,
+    };
+    use windows_sys::Win32::System::Threading::GetCurrentProcess;
+
+    // SAFETY: the counters struct is zero-initialized, its `cb` field is set to
+    // its own size as the API requires, and the pseudo handle for the current
+    // process is always valid.
+    unsafe {
+        let mut counters: PROCESS_MEMORY_COUNTERS = std::mem::zeroed();
+        counters.cb = std::mem::size_of::<PROCESS_MEMORY_COUNTERS>() as u32;
+        let succeeded = K32GetProcessMemoryInfo(GetCurrentProcess(), &mut counters, counters.cb);
+        if succeeded == 0 {
+            return None;
+        }
+        Some(counters.WorkingSetSize as u64)
+    }
+}
+
+#[cfg(all(test, not(windows)))]
+fn memory_usage_bytes_platform() -> Option<u64> {
+    None
 }
 
 /// Runtime facts about the host. Surfaced to the frontend over IPC so the UI
@@ -108,6 +194,80 @@ mod tests {
     fn serializes_platform_lowercase() {
         let json = serde_json::to_value(Platform::Windows).expect("platform serializes");
         assert_eq!(json, serde_json::json!("windows"));
+    }
+
+    #[test]
+    fn regular_files_and_directories_are_not_reparse_points() {
+        let dir = crate::filesystem::test_support::unique_temp_dir("platform-reparse");
+        let file = dir.join("plain.txt");
+        std::fs::write(&file, b"x").expect("file is writable");
+
+        assert!(!is_reparse_point(
+            &std::fs::symlink_metadata(&dir).expect("the directory exists")
+        ));
+        assert!(!is_reparse_point(
+            &std::fs::symlink_metadata(&file).expect("the file exists")
+        ));
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_symbolic_link_is_a_reparse_point() {
+        let dir = crate::filesystem::test_support::unique_temp_dir("platform-reparse-link");
+        let target = dir.join("target.txt");
+        std::fs::write(&target, b"x").expect("file is writable");
+        let link = dir.join("link.txt");
+
+        let created = {
+            #[cfg(unix)]
+            {
+                std::os::unix::fs::symlink(&target, &link).is_ok()
+            }
+            #[cfg(windows)]
+            {
+                std::os::windows::fs::symlink_file(&target, &link).is_ok()
+            }
+            #[cfg(not(any(unix, windows)))]
+            {
+                false
+            }
+        };
+
+        if created {
+            assert!(is_reparse_point(
+                &std::fs::symlink_metadata(&link).expect("the link exists")
+            ));
+        }
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn reports_a_plausible_memory_figure() {
+        if let Some(bytes) = memory_usage_bytes() {
+            assert!(bytes > 0, "a running process occupies some memory");
+            assert!(
+                bytes < 1024u64 * 1024 * 1024 * 1024,
+                "a working set below a terabyte is the honest range: {bytes}"
+            );
+            assert!(
+                bytes >= 1024 * 1024,
+                "a process running tests holds more than a megabyte: {bytes}"
+            );
+        }
+    }
+
+    #[test]
+    fn classifies_disk_full_errors_per_platform() {
+        let full = std::io::Error::from_raw_os_error(super::DISK_FULL_CODE);
+        assert!(is_disk_full_error(&full));
+
+        let other = std::io::Error::from_raw_os_error(5);
+        assert!(!is_disk_full_error(&other));
+
+        let kind_only = std::io::Error::new(std::io::ErrorKind::PermissionDenied, "denied");
+        assert!(!is_disk_full_error(&kind_only));
     }
 
     #[test]

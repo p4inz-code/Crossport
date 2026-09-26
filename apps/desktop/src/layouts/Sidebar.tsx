@@ -6,7 +6,7 @@
  * ========================================================================== */
 
 import type { LucideIcon } from "lucide-react";
-import { HardDrive, Home, Settings } from "lucide-react";
+import { ArrowRightLeft, HardDrive, Home, Settings } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
 import { cn } from "@/lib";
@@ -24,6 +24,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { to: "/", label: "Home", icon: Home, end: true },
   { to: "/drives", label: "Drives", icon: HardDrive },
+  { to: "/transfers", label: "Transfers", icon: ArrowRightLeft },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -62,7 +63,7 @@ export function Sidebar() {
       </nav>
 
       <div className="sidebar__footer">
-        <p className="sidebar__hint">Storage browser</p>
+        <p className="sidebar__hint">Storage browser &amp; transfers</p>
       </div>
     </aside>
   );

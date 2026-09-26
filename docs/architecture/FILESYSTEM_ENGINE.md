@@ -1,4 +1,4 @@
-> **Status: partial — volumes and directory browsing implemented.** Path normalization and validation (`src-tauri/src/filesystem/path.rs`), metadata inspection (`metadata.rs`), single-directory listing (`directory.rs`), volume detection with classification and capacity (`platform/volume.rs`, `platform/drives.rs`), and the native folder picker (`commands/dialog.rs`) exist today. The transfer engine (copy/move, recursive traversal, hashing, verification) is a later phase. Sections below that describe unimplemented behavior are planning material.
+> **Status: read paths and the transfer engine implemented.** Path normalization and validation (`src-tauri/src/filesystem/path.rs`), metadata inspection (`metadata.rs`), single-directory listing (`directory.rs`), volume detection with classification and capacity (`platform/volume.rs`, `platform/drives.rs`), and the native folder picker (`commands/dialog.rs`) exist today. The transfer engine now builds on this layer for recursive copy/move (`src-tauri/src/transfer/`); hashing and post-transfer verification are a later phase. Sections below that describe unimplemented behavior are planning material.
 # CrossPort Filesystem Engine
 
 Version: 2.0
@@ -27,7 +27,7 @@ Its purpose is to hide platform differences while maintaining reliable file oper
 | Directory listing | `filesystem/directory.rs` | One directory per request, typed entries (name, path, kind, size, modified, read-only), directories before files, truncated at 10,000 entries, symlinks reported but never followed |
 | Native dialog | `commands/dialog.rs` | Folder selection validated before it reaches the frontend |
 
-Nothing in this layer mutates the filesystem. No operation recurses: the browser lists one directory at a time, and nothing walks a tree until the transfer engine needs it.
+Nothing in the browsing path mutates the filesystem and no browsing operation recurses: the browser lists one directory at a time. Tree walking and every write live in the transfer engine, which consumes this layer's path and safety helpers instead of duplicating them.
 
 ---
 

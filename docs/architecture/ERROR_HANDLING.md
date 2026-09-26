@@ -36,6 +36,12 @@ structured object:
 | `path_not_directory` | The path exists but is not a directory |
 | `permission_denied` | The OS refused access |
 | `io` | A platform/filesystem operation failed for another reason |
+| `unsafe_relationship` | A transfer was refused because the destination is its own source or lives inside it (with `rename`, a destination equal to the source becomes a sibling instead) |
+| `not_enough_space` | The destination volume cannot hold the planned transfer |
+| `disk_full` | The destination ran out of space while data was being written |
+| `too_many_items` | A transfer covers more entries than the engine will plan (100,000) |
+| `transfer_not_found` | No transfer job with that identifier is known to the engine |
+| `transfer_failed` | A job finished without completing every item |
 | `internal` | An internal failure (resolved directory, poisoned lock, dialog failure) |
 
 `std::io::Error` is mapped onto these categories, so callers get the closest
@@ -66,6 +72,15 @@ between the two is a bug: the Rust list is covered by
 - Drive enumeration failure → the drives page shows the backend message and a
   retry action.
 - Cancelled native dialog → `null`, not an error.
+- Rejected transfer request → the reason is shown where the request was made
+  (missing source, destination inside its source, not enough room, too many
+  items) and nothing is queued.
+- Per-item transfer failure → recorded as an `issue` on the job, the job keeps
+  going, and the job ends as `failed` only after the rest was attempted. A
+  failed move keeps the source in place.
+- A cancel discards the job's partial output and removes only the directories
+  the job created, so an interrupted transfer never leaves a half-written file
+  under a real name.
 - No silent failures anywhere: every failure path logs or surfaces.
 
 ## Logging

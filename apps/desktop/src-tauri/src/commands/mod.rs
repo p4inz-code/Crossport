@@ -10,6 +10,7 @@ pub mod drives;
 pub mod filesystem;
 pub mod settings;
 pub mod system;
+pub mod transfer;
 
 use crate::errors::{AppError, AppResult};
 

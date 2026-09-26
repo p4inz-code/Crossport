@@ -1,8 +1,8 @@
 /* ==========================================================================
  * Root application component
  * Routes are lazy-loaded to keep the initial bundle small as pages grow.
- * Only implemented pages are routed: transfer and history arrive in Phase 3
- * and are not stubbed out ahead of time.
+ * Only implemented pages are routed: history arrives in a later phase and is
+ * not stubbed out ahead of time.
  * ========================================================================== */
 
 import type { ReactNode } from "react";
@@ -24,6 +24,11 @@ const SettingsPage = lazy(() =>
     default: module.SettingsPage,
   })),
 );
+const TransfersPage = lazy(() =>
+  import("@/features/transfers").then((module) => ({
+    default: module.TransfersPage,
+  })),
+);
 
 /** Wraps a lazy route with a Suspense fallback. */
 function lazyElement(element: ReactNode): ReactNode {
@@ -37,6 +42,7 @@ const router = createHashRouter([
     children: [
       { index: true, element: <HomePage /> },
       { path: "drives", element: lazyElement(<DrivesPage />) },
+      { path: "transfers", element: lazyElement(<TransfersPage />) },
       { path: "settings", element: lazyElement(<SettingsPage />) },
     ],
   },

@@ -26,9 +26,11 @@ Status: Approved
 | `stores/drives-store` | Refresh, empty results, unreported volume metadata, structured failures, recovery |
 | `stores/browser-store` | Opening locations, backend-normalized paths, back/up/refresh, stale-response protection, error surfacing, recovery, leaving the browser |
 | `stores/system-store` | Hydration and browser-mode failure |
+| `services/transfer-service` | Command payloads, argument forwarding, contract rejection, structured failures, event subscription (validated payloads, skipped garbage payloads, browser no-op) |
+| `stores/transfer-store` | Queue loading and ordering, snapshot merging by identifier, control calls and their failures, dismissals that ignore late events, clearing finished jobs, following the event feed |
 | `types/*` | Schema acceptance and rejection per rule |
 | `lib/*` | Formatters and class composition |
-| `features/**/*.test.tsx` | Volume metadata rendering, capacity meters, entry tables, navigation controls, and the loading/empty/error states of the drives page and the settings page |
+| `features/**/*.test.tsx` | Volume metadata rendering, capacity meters, entry tables, navigation controls, multi-select and transfer actions, the loading/empty/error states of the drives page and the settings page, the transfer composer's dry run and conflict strategies, and the queue surface's progress, issues, and controls |
 
 Run with `pnpm test` (or `pnpm --filter desktop test`).
 
@@ -46,6 +48,14 @@ Run with `pnpm test` (or `pnpm --filter desktop test`).
 | `filesystem::directory` | Ordering (directories first), file/directory metadata, listing limits and truncation, symlink and broken-link handling, path validation, read-error mapping |
 | `filesystem::path` | Empty/null/relative rejection, lexical cleanup, root-escape rejection, directory validation |
 | `filesystem::metadata` | File/dir/root descriptions, missing paths, camelCase payload |
+| `platform::drives` (space) | Free-space probing, volume roots, volume identity comparison |
+| `transfer::model` | Stable identifiers, terminal/live states, percent and ETA rules, request defaults and rejection, serialized progress payload |
+| `transfer::plan` | Recursive planning, ordering, collisions, skip strategies, item budget, space checks |
+| `transfer::safety` | Source inspection, destination validation, unsafe relationships, chain creation and empty-directory cleanup, disk-full mapping |
+| `transfer::conflict` | Collision detection, rename candidates, exhaustion |
+| `transfer::copy` | Streaming with a bounded buffer, temp-file commits, move semantics, failure isolation |
+| `transfer` (engine) | Queue order, one active job at a time, pause/resume/cancel on queued and running jobs, prune rules, concurrent control calls, progress accounting, throttled snapshots |
+| `transfer::sanity` | Real end-to-end runs on disk: nested tree copy, move, all three conflict strategies, pause/resume/cancel cleanliness, a 192 MiB file streamed under a memory ceiling, unsafe requests leaving the disk untouched, queue order |
 
 Run with `cargo test` in `apps/desktop/src-tauri`.
 

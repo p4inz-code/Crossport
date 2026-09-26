@@ -4,7 +4,12 @@
  * entries of the listed directory, and the loading, empty, and error states.
  *
  * Presentational only. It renders the listing the backend returned and asks
- * the page to open paths — it never builds or validates a path itself.
+ * the page to open paths or start a transfer — it never builds or validates a
+ * path itself, and the paths it reports are the ones the backend produced.
+ *
+ * Two selections coexist on purpose: checking rows picks the items a transfer
+ * will move, while clicking a row shows its details. Selecting a folder's name
+ * still opens it, so a folder can be both browsed and moved.
  * ========================================================================== */
 
 import {
@@ -12,6 +17,8 @@ import {
   ArrowLeft,
   ArrowUp,
   ChevronRight,
+  Copy,
+  FolderInput,
   FolderSearch,
   FolderX,
   RefreshCw,
@@ -21,11 +28,17 @@ import { type KeyboardEvent as ReactKeyboardEvent, useState } from "react";
 import { Button, EmptyState, LoadingState } from "@/components/ui";
 import { cn, formatBytes, formatDateTime } from "@/lib";
 import type { IpcError } from "@/services/ipc";
-import type { DirectoryEntry, DirectoryListing, LoadStatus } from "@/types";
+import type {
+  DirectoryEntry,
+  DirectoryListing,
+  LoadStatus,
+  TransferOperation,
+} from "@/types";
 import {
   ENTRY_KIND_ICONS,
   entryKindLabel,
   isOpenableDirectory,
+  selectionSummary,
 } from "../presentation";
 import "./DirectoryBrowser.css";
 
@@ -39,13 +52,16 @@ interface DirectoryBrowserProps {
   canGoUp: boolean;
   /** The native folder picker is open. */
   pickerBusy: boolean;
-  /** Message about the picker itself, kept apart from listing failures. */
+  /** A transfer is being composed: picking a destination, or planning one. */
+  transferBusy: boolean;
+  /** Message about an action on this folder, kept apart from listing failures. */
   alert: string | null;
   onBack: () => void;
   onUp: () => void;
   onRefresh: () => void;
   onOpen: (path: string) => void;
   onOpenFolder: () => void;
+  onTransferRequest: (operation: TransferOperation, sources: string[]) => void;
   onLeave: () => void;
 }
 
@@ -57,20 +73,40 @@ export function DirectoryBrowser({
   canGoBack,
   canGoUp,
   pickerBusy,
+  transferBusy,
   alert,
   onBack,
   onUp,
   onRefresh,
   onOpen,
   onOpenFolder,
+  onTransferRequest,
   onLeave,
 }: DirectoryBrowserProps) {
+  // A single row is highlighted for its details; a separate set of checkboxes
+  // picks what a transfer moves.
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [checkedPaths, setCheckedPaths] = useState<readonly string[]>([]);
 
-  // The selection is stored as a path, so an entry that disappears with the
-  // next listing simply stops being selected.
+  // Both are stored as paths, so an entry that disappears with the next
+  // listing simply stops being selected, and no stale path can be transferred.
   const selectedEntry =
     listing?.entries.find((entry) => entry.path === selectedPath) ?? null;
+  const checkedEntries =
+    listing?.entries.filter((entry) => checkedPaths.includes(entry.path)) ?? [];
+  const checkedSources = checkedEntries.map((entry) => entry.path);
+  const allChecked =
+    listing !== null &&
+    listing.entries.length > 0 &&
+    checkedEntries.length === listing.entries.length;
+
+  function toggleChecked(path: string): void {
+    setCheckedPaths((current) =>
+      current.includes(path)
+        ? current.filter((entry) => entry !== path)
+        : [...current, path],
+    );
+  }
 
   function activate(entry: DirectoryEntry, force: boolean): void {
     if (isOpenableDirectory(entry) && (force || entry.kind === "directory")) {
@@ -134,10 +170,27 @@ export function DirectoryBrowser({
             size="sm"
             variant="secondary"
             onClick={onOpenFolder}
-            disabled={pickerBusy}
+            disabled={pickerBusy || transferBusy}
           >
             <FolderSearch size={15} strokeWidth={1.75} aria-hidden="true" />
             {pickerBusy ? "Waiting for the dialog…" : "Open folder…"}
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => onTransferRequest("copy", checkedSources)}
+            disabled={checkedSources.length === 0 || transferBusy}
+          >
+            <Copy size={15} strokeWidth={1.75} aria-hidden="true" />
+            Copy to…
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => onTransferRequest("move", checkedSources)}
+            disabled={checkedSources.length === 0 || transferBusy}
+          >
+            <FolderInput size={15} strokeWidth={1.75} aria-hidden="true" />
+            Move to…
           </Button>
         </div>
 
@@ -204,6 +257,26 @@ export function DirectoryBrowser({
               <table className="browser__table">
                 <thead>
                   <tr>
+                    <th scope="col" className="browser__cell--select">
+                      <input
+                        type="checkbox"
+                        aria-label="Select all entries"
+                        checked={allChecked}
+                        ref={(node) => {
+                          if (node !== null) {
+                            node.indeterminate =
+                              checkedEntries.length > 0 && !allChecked;
+                          }
+                        }}
+                        onChange={() =>
+                          setCheckedPaths(
+                            allChecked
+                              ? []
+                              : listing.entries.map((entry) => entry.path),
+                          )
+                        }
+                      />
+                    </th>
                     <th scope="col">Name</th>
                     <th scope="col" className="browser__cell--size">
                       Size
@@ -222,6 +295,8 @@ export function DirectoryBrowser({
                       key={entry.path}
                       entry={entry}
                       selected={entry.path === selectedPath}
+                      checked={checkedPaths.includes(entry.path)}
+                      onToggleChecked={toggleChecked}
                       onActivate={activate}
                     />
                   ))}
@@ -233,7 +308,18 @@ export function DirectoryBrowser({
       </div>
 
       <div className="browser__status">
-        {selectedEntry !== null ? (
+        {checkedEntries.length > 0 ? (
+          <span className="browser__selection">
+            <span>{selectionSummary(checkedEntries)}</span>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setCheckedPaths([])}
+            >
+              Clear selection
+            </Button>
+          </span>
+        ) : selectedEntry !== null ? (
           <span>
             Selected <strong>{selectedEntry.name}</strong> ·{" "}
             {entryKindLabel(selectedEntry.kind)} ·{" "}
@@ -255,15 +341,31 @@ export function DirectoryBrowser({
 interface EntryRowProps {
   entry: DirectoryEntry;
   selected: boolean;
+  checked: boolean;
+  onToggleChecked: (path: string) => void;
   onActivate: (entry: DirectoryEntry, force: boolean) => void;
 }
 
-function EntryRow({ entry, selected, onActivate }: EntryRowProps) {
+function EntryRow({
+  entry,
+  selected,
+  checked,
+  onToggleChecked,
+  onActivate,
+}: EntryRowProps) {
   const Icon = ENTRY_KIND_ICONS[entry.kind];
   const isDirectory = entry.kind === "directory";
 
   return (
     <tr className={cn("browser__row", selected && "browser__row--selected")}>
+      <td className="browser__cell--select">
+        <input
+          type="checkbox"
+          aria-label={`Select ${entry.name}`}
+          checked={checked}
+          onChange={() => onToggleChecked(entry.path)}
+        />
+      </td>
       <th scope="row" className="browser__cell--name">
         <button
           type="button"

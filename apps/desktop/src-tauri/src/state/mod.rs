@@ -11,12 +11,16 @@ use crate::config::AppConfig;
 use crate::errors::{AppError, AppResult};
 use crate::platform::Platform;
 use crate::settings::AppSettings;
+use crate::transfer::TransferEngine;
 
 /// Application state managed by the Tauri runtime.
 pub struct AppState {
     pub config: AppConfig,
     /// Resolved once at startup; platform checks never re-read the environment.
     pub platform: Platform,
+    /// The transfer queue. Cheap to clone: every clone shares one queue and
+    /// one set of workers.
+    pub transfers: TransferEngine,
     settings: Mutex<AppSettings>,
 }
 
@@ -25,6 +29,7 @@ impl Default for AppState {
         Self {
             config: AppConfig::default(),
             platform: Platform::current(),
+            transfers: TransferEngine::default(),
             settings: Mutex::new(AppSettings::default()),
         }
     }
@@ -83,5 +88,14 @@ mod tests {
     #[test]
     fn resolved_platform_matches_the_host() {
         assert_eq!(AppState::default().platform, Platform::current());
+    }
+
+    #[test]
+    fn starts_with_an_empty_transfer_queue() {
+        let state = AppState::default();
+
+        assert!(state.transfers.snapshots().is_empty());
+
+        state.transfers.shutdown();
     }
 }

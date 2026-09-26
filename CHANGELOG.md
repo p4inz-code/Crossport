@@ -9,6 +9,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Transfer engine (`src-tauri/src/transfer/`): a real copy/move engine with a
+  planned destination for every item. `plan.rs` walks sources in Rust with a
+  100,000-item budget and resolves collisions before anything is touched;
+  `copy.rs` streams through a reused 1 MiB buffer, writes each file to a
+  `.crossport-<job>-<index>.partial` file beside its destination, and commits it
+  with a rename, so an interrupted or cancelled transfer never leaves a
+  half-written file under a real name. `safety.rs` validates sources and the
+  destination (must exist, must be a directory, must be writable), refuses a
+  destination that is its own source or lives inside it, and removes only the
+  directories a job created when it unwinds. `conflict.rs` implements the three
+  conflict strategies, including `Data (2).txt`-style renaming.
+- Move semantics: a same-volume move of a clean root is a single rename and
+  copies nothing; every other move copies first, checks the copied byte count
+  per file, and only then deletes the source — and keeps the source (reporting
+  it as an issue) when anything failed or was skipped, so a move can never lose
+  data it did not place.
+- Transfer queue (`src-tauri/src/transfer/mod.rs`): jobs are queued with
+  monotonic identifiers and run in the order they were accepted, one at a time.
+  Pause and resume work on queued and running jobs alike; cancel unwinds
+  cooperatively and discards partial output; finished jobs can be pruned
+  individually or in bulk. A worker panic is caught and reported as a failed
+  job instead of poisoning the engine.
+- Progress reporting: byte, file, and directory counters, current file, speed
+  over a recent window, whole-run average, and an ETA that is only reported
+  while a job is running. Progress is published as throttled `transfer:update`
+  events carrying a typed `TransferSnapshot`, so the UI stays live without
+  polling.
+- Transfer commands (`src-tauri/src/commands/transfer.rs`): `plan_transfer`,
+  `start_transfer`, `list_transfers`, `get_transfer`, `pause_transfer`,
+  `resume_transfer`, `cancel_transfer`, `remove_transfer`, and
+  `clear_finished_transfers`. Planning and queueing run on the blocking pool so
+  the event loop never waits on a slow volume.
+- New backend error categories for transfers: `unsafe_relationship`,
+  `not_enough_space`, `disk_full`, `too_many_items`, `transfer_not_found`, and
+  `transfer_failed`, mirrored in the frontend code list and documented in
+  `docs/architecture/ERROR_HANDLING.md`.
+- Platform support for the engine: reparse-point detection, disk-full error
+  recognition, free-space probing per destination volume, volume identity
+  comparison (`same_volume`), and path containment/equality helpers.
+- Frontend transfer layer: `src/types/transfer.ts` (the snapshot, preview, and
+  request contract as zod schemas), `transfer-service.ts` (typed commands plus a
+  validated `transfer:update` subscription), and `transfer-store.ts` (the queue,
+  merged by identifier, with per-job control state and dismissals that survive
+  late events).
+- Transfer UI: multi-select checkboxes and Copy to… / Move to… in the directory
+  browser, a composer dialog that shows the backend's dry run (size, item
+  counts, collisions, free space, same-volume note) and re-plans whenever the
+  conflict strategy changes, and a Transfers page listing every job with its
+  progress, speed, ETA, issues, and pause / resume / cancel / remove controls.
+  Cancelling asks first, because it discards partial output.
+- Tests for the transfer work: queue ordering, pause/resume/cancel on running
+  and queued jobs, the conflict matrix, move behavior, failure isolation, prune
+  rules, bounded memory while streaming a large file, real end-to-end copy/move
+  sanity runs on disk, plus frontend service, store, presentation, and component
+  tests.
 - Volume model (`src-tauri/src/platform/volume.rs`): typed `DriveInfo` with a
   volume kind (`fixed`, `removable`, `network`, `optical`, `ram`, `unknown`),
   volume name, filesystem type, total/free/used capacity, read-only flag, and
@@ -63,6 +118,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The Drives page can now compose transfers: entries are multi-selected and
+  copied or moved to a destination chosen in the native dialog, and the
+  backend's dry run is shown — what moves, what collides, how much space the
+  destination has — before anything is queued. The frontend never estimates
+  sizes or plans a transfer itself.
+- The application shell feeds the transfer queue, so a running job keeps its
+  progress wherever the user navigates; the Transfers page is listed in the
+  sidebar and renders only snapshots the engine reported.
+- Cancelling a transfer asks for confirmation before it discards partial
+  output, and the default conflict strategy is Skip: a transfer never destroys
+  data unless the user chose Replace.
 - `list_drives` returns the full volume contract (identity, kind, filesystem,
   capacity, status) instead of a root and a label. A volume whose media is not
   ready is reported as unavailable rather than being dropped or invented.

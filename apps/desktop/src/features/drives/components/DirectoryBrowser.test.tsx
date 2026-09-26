@@ -30,12 +30,14 @@ function renderBrowser(
       canGoBack={false}
       canGoUp={false}
       pickerBusy={false}
+      transferBusy={false}
       alert={null}
       onBack={vi.fn()}
       onUp={vi.fn()}
       onRefresh={vi.fn()}
       onOpen={vi.fn()}
       onOpenFolder={vi.fn()}
+      onTransferRequest={vi.fn()}
       onLeave={vi.fn()}
       {...overrides}
     />,
@@ -274,6 +276,125 @@ describe("DirectoryBrowser", () => {
     expect(
       screen.getByRole("button", { name: /Waiting for the dialog/ }),
     ).toBeDisabled();
+  });
+
+  it("only offers a transfer once something is checked", () => {
+    renderBrowser({ location: "C:\\", listing: LISTING, status: "ready" });
+
+    expect(screen.getByRole("button", { name: /Copy to…/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Move to…/ })).toBeDisabled();
+    expect(screen.queryByText(/selected/)).toBeNull();
+  });
+
+  it("reports the checked items and the operation the user chose", () => {
+    const onTransferRequest = vi.fn();
+    renderBrowser({
+      location: "C:\\",
+      listing: LISTING,
+      status: "ready",
+      onTransferRequest,
+    });
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Users" }));
+
+    // The summary names what the engine will actually carry.
+    expect(screen.getByText("1 item · size not reported")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Move to…/ }));
+    expect(onTransferRequest).toHaveBeenCalledWith("move", ["C:\\Users"]);
+  });
+
+  it("reports every checked item and the paths the backend produced", () => {
+    const onTransferRequest = vi.fn();
+    renderBrowser({
+      location: "C:\\",
+      listing: LISTING,
+      status: "ready",
+      onTransferRequest,
+    });
+
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: "Select all entries" }),
+    );
+
+    expect(screen.getByText("2 items · at least 2 KB")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Copy to…/ }));
+    expect(onTransferRequest).toHaveBeenCalledWith("copy", [
+      "C:\\Users",
+      "C:\\notes.txt",
+    ]);
+  });
+
+  it("unchecks everything from the select-all box and the status bar", () => {
+    renderBrowser({ location: "C:\\", listing: LISTING, status: "ready" });
+
+    const selectAll = screen.getByRole("checkbox", {
+      name: "Select all entries",
+    });
+    fireEvent.click(selectAll);
+    expect(screen.getByRole("button", { name: /Copy to…/ })).toBeEnabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear selection" }));
+
+    expect(screen.getByRole("button", { name: /Copy to…/ })).toBeDisabled();
+    expect(selectAll).not.toBeChecked();
+  });
+
+  it("does not offer to transfer while a transfer is being composed", () => {
+    renderBrowser({
+      location: "C:\\",
+      listing: LISTING,
+      status: "ready",
+      transferBusy: true,
+    });
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Users" }));
+
+    expect(screen.getByRole("button", { name: /Copy to…/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Move to…/ })).toBeDisabled();
+  });
+
+  it("names entries the engine will not copy", () => {
+    renderBrowser({
+      location: "C:\\",
+      listing: makeListing({
+        entries: [
+          makeEntry({ name: "notes.txt", path: "C:\\notes.txt" }),
+          makeEntry({
+            name: "shortcut",
+            path: "C:\\shortcut",
+            kind: "symlink",
+            sizeBytes: null,
+          }),
+        ],
+      }),
+      status: "ready",
+    });
+
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: "Select all entries" }),
+    );
+
+    expect(
+      screen.getByText("2 items · at least 2 KB · 1 entry is not copied"),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the selection out of the way of opening folders", () => {
+    const onOpen = vi.fn();
+    renderBrowser({
+      location: "C:\\",
+      listing: LISTING,
+      status: "ready",
+      onOpen,
+    });
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Users" }));
+    fireEvent.click(screen.getByRole("button", { name: /Users/ }));
+
+    expect(onOpen).toHaveBeenCalledWith("C:\\Users");
+    expect(screen.getByText("1 item · size not reported")).toBeInTheDocument();
   });
 
   it("describes entries the platform could not measure", () => {

@@ -23,3 +23,35 @@ export type { AppSettings, ThemeMode } from "./settings";
 export { DEFAULT_SETTINGS, settingsSchema, THEME_MODES } from "./settings";
 export type { LoadStatus, Platform, SaveStatus, SystemInfo } from "./system";
 export { systemInfoSchema } from "./system";
+export type {
+  ConflictStrategy,
+  ItemKind,
+  TransferError,
+  TransferIssue,
+  TransferIssueReason,
+  TransferOperation,
+  TransferPreview,
+  TransferPreviewRoot,
+  TransferProgress,
+  TransferRequest,
+  TransferSnapshot,
+  TransferStatus,
+} from "./transfer";
+export {
+  CONFLICT_STRATEGIES,
+  DEFAULT_CONFLICT_STRATEGY,
+  hasStarted,
+  ITEM_KINDS,
+  isLiveTransferStatus,
+  isTerminalTransferStatus,
+  TRANSFER_ISSUE_REASONS,
+  TRANSFER_OPERATIONS,
+  TRANSFER_STATUSES,
+  transferErrorSchema,
+  transferIssueSchema,
+  transferPreviewRootSchema,
+  transferPreviewSchema,
+  transferProgressSchema,
+  transferRequestSchema,
+  transferSnapshotSchema,
+} from "./transfer";

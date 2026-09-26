@@ -171,7 +171,7 @@ fn describe_entry(entry: &std::fs::DirEntry) -> DirectoryEntry {
         name,
         path: path.display().to_string(),
         kind,
-        size_bytes: (kind == EntryKind::File).then(|| metadata.len()),
+        size_bytes: (kind == EntryKind::File).then_some(metadata.len()),
         modified_ms: modified_ms(&metadata),
         readonly: Some(metadata.permissions().readonly()),
     }

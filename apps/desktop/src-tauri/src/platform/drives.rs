@@ -18,6 +18,7 @@
 
 use std::path::{Path, PathBuf};
 
+use crate::platform::paths as platform_paths;
 use crate::platform::volume::{dedupe_roots, sort_volumes, DriveInfo, VolumeFacts, VolumeKind};
 
 /// Enumerates the storage volumes available to the current user.
@@ -26,6 +27,108 @@ pub fn list_drives() -> Vec<DriveInfo> {
     let mut volumes: Vec<DriveInfo> = roots.iter().filter_map(|root| probe(root)).collect();
     sort_volumes(&mut volumes);
     volumes
+}
+
+/// Free space the current user can still write on the volume holding `path`.
+///
+/// `None` means "the platform did not report it" — a missing answer is never
+/// treated as "no space", because refusing a transfer on a guess would be
+/// worse than letting the write fail with a real error.
+pub fn available_bytes(path: &Path) -> Option<u64> {
+    available_bytes_platform(path)
+}
+
+/// The volume root that holds `path`, when the host can determine it.
+///
+/// Both this and [`same_volume`] are lexical: nothing is resolved on disk, so
+/// the answer is available for paths that do not exist yet (a destination
+/// being planned).
+pub fn volume_root_for(path: &Path) -> Option<PathBuf> {
+    volume_root_for_platform(path)
+}
+
+/// Whether two normalized paths live on the same volume.
+///
+/// When the host cannot tell, the answer is `false`: the move engine then
+/// takes the copy-then-remove path, which is always safe, instead of assuming
+/// a rename would work.
+pub fn same_volume(left: &Path, right: &Path) -> bool {
+    match (volume_root_for(left), volume_root_for(right)) {
+        (Some(left_root), Some(right_root)) => platform_paths::same_path(&left_root, &right_root),
+        _ => false,
+    }
+}
+
+/// Windows: the Win32 volume API answers for any existing path on the volume,
+/// so the probe asks directly and gets the quota-aware figure.
+#[cfg(windows)]
+fn available_bytes_platform(path: &Path) -> Option<u64> {
+    use std::os::windows::ffi::OsStrExt;
+
+    let wide: Vec<u16> = path
+        .as_os_str()
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+    let mut available_to_caller: u64 = 0;
+
+    // SAFETY: `wide` is a NUL-terminated path buffer that outlives the call and
+    // the remaining two output pointers are documented as optional.
+    let succeeded = unsafe {
+        windows_sys::Win32::Storage::FileSystem::GetDiskFreeSpaceExW(
+            wide.as_ptr(),
+            &mut available_to_caller,
+            std::ptr::null_mut(),
+            std::ptr::null_mut(),
+        )
+    };
+
+    (succeeded != 0).then_some(available_to_caller)
+}
+
+/// Windows: a drive letter or UNC prefix is the volume.
+#[cfg(windows)]
+fn volume_root_for_platform(path: &Path) -> Option<PathBuf> {
+    use std::path::Component;
+
+    match path.components().next()? {
+        Component::Prefix(prefix) => {
+            let mut root = prefix.as_os_str().to_string_lossy().into_owned();
+            root.push('\\');
+            Some(PathBuf::from(root))
+        }
+        _ => None,
+    }
+}
+
+/// Other platforms: the mount roots the host exposes, matched lexically, with
+/// the most specific (longest) match winning. Free space is whatever the
+/// volume probe reported; `std` alone cannot ask a mount point.
+#[cfg(not(windows))]
+fn available_bytes_platform(path: &Path) -> Option<u64> {
+    let root = volume_root_for_platform(path)?;
+    list_drives()
+        .into_iter()
+        .find(|volume| platform_paths::same_path(Path::new(&volume.root), &root))
+        .and_then(|volume| volume.free_bytes)
+}
+
+#[cfg(not(windows))]
+fn volume_root_for_platform(path: &Path) -> Option<PathBuf> {
+    let mut best: Option<PathBuf> = None;
+    for volume in list_drives() {
+        let root = PathBuf::from(&volume.root);
+        if !platform_paths::path_contains(&root, path) {
+            continue;
+        }
+        let more_specific = best.as_ref().map_or(true, |current| {
+            root.components().count() > current.components().count()
+        });
+        if more_specific {
+            best = Some(root);
+        }
+    }
+    best
 }
 
 /* ==========================================================================
@@ -483,6 +586,55 @@ mod tests {
         );
 
         clean_up(&base);
+    }
+
+    #[test]
+    fn same_volume_compares_the_roots_the_host_reports() {
+        let dir = unique_temp_dir("drives-same-volume");
+        let nested = dir.join("nested");
+        std::fs::create_dir_all(&nested).expect("subdir");
+
+        assert!(
+            same_volume(&dir, &nested),
+            "a directory and its child live on the same volume"
+        );
+
+        clean_up(&dir);
+    }
+
+    #[test]
+    fn volume_root_for_is_lexical_and_absolute() {
+        let dir = unique_temp_dir("drives-root");
+
+        let root = volume_root_for(&dir).expect("a temporary directory lives on a volume");
+
+        assert!(root.is_absolute());
+        assert!(
+            platform_paths::path_contains(&root, &dir),
+            "the reported root contains the path it was asked about"
+        );
+
+        clean_up(&dir);
+    }
+
+    #[test]
+    fn available_bytes_never_invents_space() {
+        let dir = unique_temp_dir("drives-available");
+        let missing = dir.join("not-a-volume");
+
+        // Either the host reports a number, or it reports nothing. Both are
+        // honest; a fabricated 0 would block every transfer.
+        if let Some(available) = available_bytes(&dir) {
+            assert!(available > 0, "a writable temporary directory has space");
+        } else {
+            assert!(
+                available_bytes(&dir).is_none(),
+                "a missing answer stays missing"
+            );
+        }
+        assert_eq!(available_bytes(&missing), None);
+
+        clean_up(&dir);
     }
 
     fn clean_up(dir: &Path) {

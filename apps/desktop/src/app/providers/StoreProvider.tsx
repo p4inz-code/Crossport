@@ -8,6 +8,7 @@
 import type { ReactNode } from "react";
 import { useEffect } from "react";
 
+import { useTransferFeed } from "@/hooks";
 import { useSettingsStore, useSystemStore } from "@/stores";
 
 interface StoreProviderProps {
@@ -22,6 +23,10 @@ export function StoreProvider({ children }: StoreProviderProps) {
     void useSettingsStore.getState().hydrate();
     void useSystemStore.getState().hydrate();
   }, []);
+
+  // A transfer keeps running while the user is elsewhere in the app, so the
+  // queue is fed from the shell rather than from one page.
+  useTransferFeed();
 
   return <>{children}</>;
 }
