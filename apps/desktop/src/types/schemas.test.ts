@@ -1,32 +1,117 @@
 import { describe, expect, it } from "vitest";
-
+import { makeEntry, makeListing, makeVolume } from "@/test/fixtures";
 import { driveInfoSchema, driveListSchema } from "./drives";
-import { entryMetadataSchema, pickedDirectorySchema } from "./filesystem";
+import {
+  directoryEntrySchema,
+  directoryListingSchema,
+  entryMetadataSchema,
+  pickedDirectorySchema,
+} from "./filesystem";
 import { systemInfoSchema } from "./system";
 
 describe("drive schemas", () => {
-  it("accepts a backend drive entry", () => {
-    expect(
-      driveInfoSchema.safeParse({ root: "C:\\", label: "C:" }).success,
-    ).toBe(true);
-    expect(driveInfoSchema.safeParse({ root: "/", label: "/" }).success).toBe(
-      true,
-    );
+  it("accepts a fully reported backend volume", () => {
+    expect(driveInfoSchema.safeParse(makeVolume()).success).toBe(true);
   });
 
-  it("rejects empty fields", () => {
-    expect(driveInfoSchema.safeParse({ root: "", label: "C:" }).success).toBe(
+  it("accepts unreported metadata instead of requiring it", () => {
+    const sparse = makeVolume({
+      id: "/mnt/usb",
+      root: "/mnt/usb/",
+      label: "/mnt/usb",
+      name: null,
+      kind: "unknown",
+      filesystem: null,
+      totalBytes: null,
+      freeBytes: null,
+      usedBytes: null,
+      readonly: null,
+      mounted: false,
+    });
+
+    expect(driveInfoSchema.safeParse(sparse).success).toBe(true);
+  });
+
+  it("rejects empty identifiers and an unknown volume kind", () => {
+    expect(driveInfoSchema.safeParse(makeVolume({ id: "" })).success).toBe(
       false,
     );
-    expect(driveInfoSchema.safeParse({ root: "/", label: "" }).success).toBe(
+    expect(driveInfoSchema.safeParse(makeVolume({ root: "" })).success).toBe(
       false,
     );
+    expect(driveInfoSchema.safeParse(makeVolume({ label: "" })).success).toBe(
+      false,
+    );
+    expect(
+      driveInfoSchema.safeParse({ ...makeVolume(), kind: "floppy" }).success,
+    ).toBe(false);
+  });
+
+  it("rejects negative capacity and a missing mounted flag", () => {
+    expect(
+      driveInfoSchema.safeParse(makeVolume({ totalBytes: -1 })).success,
+    ).toBe(false);
+
+    const { mounted: _mounted, ...withoutFlag } = makeVolume();
+    expect(driveInfoSchema.safeParse(withoutFlag).success).toBe(false);
   });
 
   it("accepts an empty drive list but not a malformed one", () => {
     expect(driveListSchema.safeParse([]).success).toBe(true);
     expect(driveListSchema.safeParse(null).success).toBe(false);
     expect(driveListSchema.safeParse(["C:\\"]).success).toBe(false);
+  });
+});
+
+describe("directory schemas", () => {
+  it("accepts a backend listing", () => {
+    expect(directoryListingSchema.safeParse(makeListing()).success).toBe(true);
+  });
+
+  it("accepts a root listing with no parent and empty folders", () => {
+    const listing = makeListing({
+      path: "/",
+      name: "/",
+      parent: null,
+      entries: [],
+    });
+
+    expect(directoryListingSchema.safeParse(listing).success).toBe(true);
+  });
+
+  it("accepts entries the platform could not describe", () => {
+    const entry = makeEntry({
+      kind: "symlink",
+      sizeBytes: null,
+      modifiedMs: null,
+      readonly: null,
+    });
+
+    expect(directoryEntrySchema.safeParse(entry).success).toBe(true);
+  });
+
+  it("rejects unknown entry kinds and impossible sizes", () => {
+    expect(
+      directoryEntrySchema.safeParse({ ...makeEntry(), kind: "socket" })
+        .success,
+    ).toBe(false);
+    expect(
+      directoryEntrySchema.safeParse({ ...makeEntry(), sizeBytes: -1 }).success,
+    ).toBe(false);
+    expect(
+      directoryEntrySchema.safeParse({ ...makeEntry(), sizeBytes: 1.5 })
+        .success,
+    ).toBe(false);
+  });
+
+  it("rejects a listing without its entries or path", () => {
+    const { entries: _entries, ...withoutEntries } = makeListing();
+    expect(directoryListingSchema.safeParse(withoutEntries).success).toBe(
+      false,
+    );
+    expect(
+      directoryListingSchema.safeParse({ ...makeListing(), path: "" }).success,
+    ).toBe(false);
   });
 });
 

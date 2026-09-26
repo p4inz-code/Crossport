@@ -37,7 +37,15 @@ stdout and a rotating `crossport`-named file (5 MiB × 3) in the platform
 app-log directory. Startup logs print the resolved config and log directories,
 and the user-facing path is listed in `docs/development/SETUP.md`.
 
+## Why does a volume show no capacity?
+
+Because the platform did not report any. An empty optical drive, a disconnected
+network share, and a mount point CrossPort cannot classify all answer with
+"unknown" instead of a guessed number, and a volume whose media is not ready is
+listed as *Not available*. Facts the OS cannot provide are never invented.
+
 ## Which commands does the backend expose today?
 
 `get_settings`, `update_settings`, `get_system_info`, `list_drives`,
-`inspect_path`, and `pick_directory` — see `apps/desktop/README.md`.
+`list_directory`, `inspect_path`, and `pick_directory` — see
+`apps/desktop/README.md`.

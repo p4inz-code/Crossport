@@ -1,8 +1,9 @@
 /* ==========================================================================
  * CrossPort backend entry point
- * Wires the module tree, logging foundation, managed state, native dialog
- * plugin, and the Tauri command layer. Settings are loaded from disk during
- * setup so startup logging reflects real state.
+ * Wires the module tree (platform volumes, filesystem browsing, settings,
+ * errors), the logging foundation, managed state, the native dialog plugin,
+ * and the Tauri command layer. Settings are loaded from disk during setup so
+ * startup logging reflects real state.
  * ========================================================================== */
 
 mod commands;
@@ -27,6 +28,7 @@ pub fn run() {
             commands::dialog::pick_directory,
             commands::drives::list_drives,
             commands::filesystem::inspect_path,
+            commands::filesystem::list_directory,
             commands::settings::get_settings,
             commands::settings::update_settings,
             commands::system::get_system_info,

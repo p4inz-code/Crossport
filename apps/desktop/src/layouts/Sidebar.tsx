@@ -62,7 +62,7 @@ export function Sidebar() {
       </nav>
 
       <div className="sidebar__footer">
-        <p className="sidebar__hint">Phase 1 foundation</p>
+        <p className="sidebar__hint">Storage browser</p>
       </div>
     </aside>
   );

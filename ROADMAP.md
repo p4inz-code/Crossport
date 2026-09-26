@@ -19,13 +19,20 @@ the engineering phases.
 - [x] Test infrastructure (Vitest, cargo test) and CI
 - [x] Repository hygiene and accurate documentation
 
-## Phase 2 — Drives
+## Phase 2 — Volumes and filesystem browsing (complete)
 
-- [ ] Volume kinds (fixed, removable, network, optical)
-- [ ] Capacity, filesystem type, and connection status reporting
-- [ ] Drive UI built on the Phase 1 enumeration and filesystem foundations
+- [x] Typed volume model (kind, filesystem, capacity, read-only, mounted status)
+- [x] Volume classification and capacity probing through the Win32 volume APIs
+- [x] Directory listing command with entry metadata, deterministic ordering, and
+      a listing limit for oversized folders
+- [x] Safe navigation: path validation in Rust, backend-reported parents, and no
+      symlink following during enumeration
+- [x] Storage browser UI: volume rail with metadata, entry table, back / up /
+      refresh / drive switching, and loading, empty, and recovery states
+- [x] Test coverage for the volume model, directory listing, browser navigation,
+      and the browser surface
 
-## Phase 3 — Transfers
+## Phase 3 — Transfers (next)
 
 - [ ] Copy / move engine with progress, pause, resume, and cancellation
 - [ ] Transfer queue and conflict resolution

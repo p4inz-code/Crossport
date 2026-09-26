@@ -55,16 +55,18 @@ UI reflects the loaded settings
 Browser dev mode substitutes the Tauri steps with schema-validated
 localStorage reads/writes, keeping the store and UI code path identical.
 
-## Platform and drives flow (implemented)
+## Platform and volume flow (implemented)
 
 ```
 Drives page mounts
     ↓
 drives store → invoke("list_drives")
     ↓
-Rust: platform::drives enumerates candidate roots and keeps the readable ones
+Rust: platform::drives enumerates candidate roots on the blocking pool,
+      probes each one (kind, volume name, filesystem, capacity, read-only,
+      mounted) and keeps the volumes that exist
     ↓
-UI renders roots and labels
+UI renders each volume with its capacity, kind, and status
 ```
 
 ```
@@ -77,18 +79,47 @@ Rust: platform::SystemInfo (from std constants, resolved once at startup)
 Status bar and home page show the real host facts
 ```
 
+## Directory browsing flow (implemented)
+
+```
+User clicks a volume, a folder row, Back, Up, or Refresh
+    ↓
+browser store picks a path — a volume root, an entry path the backend
+reported, or the parent the backend reported (never one the UI built)
+    ↓
+invoke("list_directory", { path })
+    ↓
+Rust: normalize → must_be_directory → list one directory (no recursion, no
+      link following) on the blocking pool
+    ↓
+UI adopts the normalized path from the response and renders the entries
+```
+
+The store drops the previous entries while a new location loads, ignores a
+listing that arrives after a newer navigation started, and clears the entries
+when a listing fails — a disconnected volume shows a structured error with
+retry and "back to volumes" instead of stale content.
+
 ## Path inspection flow (implemented)
 
 ```
-User clicks "Browse for a folder…"
+invoke("inspect_path", { path }) → Rust normalizes the path, validates it,
+and returns name, kind, size, modification time, and read-only flag
+```
+
+`inspect_path` is the single-path primitive later milestones use (transfer
+sources and destinations); browsing goes through `list_directory`.
+
+## Native folder picker flow (implemented)
+
+```
+User clicks "Open folder…"
     ↓
-invoke("pick_directory") → Rust opens the native dialog
+invoke("pick_directory") → Rust opens the native dialog on its own thread
     ↓
 Rust normalizes the selection and asserts it is a directory
     ↓
-invoke("inspect_path", { path }) → Rust returns metadata
-    ↓
-UI renders the path, kind, size, and modification time
+invoke("list_directory", { path }) opens it in the browser
 ```
 
 Cancelling the dialog resolves with `null`, which is not an error.
@@ -107,8 +138,10 @@ Cancelling the dialog resolves with `null`, which is not an error.
 | --- | --- | --- |
 | Settings | Rust backend | `settings.json` in the app-config directory |
 | Platform facts | Rust backend | Derived at startup, cached in `AppState` |
-| Drive list | Rust backend | Derived per request; UI keeps the last result |
+| Volume list | Rust backend | Derived per request; UI keeps the last result |
 | Path metadata | Rust backend | Derived per request; never cached |
+| Directory listing | Rust backend | Derived per request; the browser keeps only the current location |
+| Navigation history | Frontend browser store | In-memory stack of locations the backend produced |
 | App metadata (name, version) | Frontend | In-memory store |
 | Theme resolution | Frontend (`useThemeMode`) | Derived from settings + OS preference |
 

@@ -9,6 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Volume model (`src-tauri/src/platform/volume.rs`): typed `DriveInfo` with a
+  volume kind (`fixed`, `removable`, `network`, `optical`, `ram`, `unknown`),
+  volume name, filesystem type, total/free/used capacity, read-only flag, and
+  mounted status. Facts the platform does not report stay `null` instead of
+  being guessed at.
+- Windows volume probing through the Win32 volume APIs (`GetDriveTypeW`,
+  `GetDiskFreeSpaceExW`, `GetVolumeInformationW`). Non-Windows targets keep the
+  mount-point discovery and report the same fields as unknown.
+- Directory listing (`src-tauri/src/filesystem/directory.rs` and the
+  `list_directory` command): validates the path, lists exactly one directory
+  (never recursing, never following symlinks or reparse points), returns typed
+  entries with size, modification time, and read-only flag, orders directories
+  before files, and flags listings truncated at 10,000 entries.
+- Storage browser on the Drives page: volume rail with capacity and status, an
+  entry table with per-entry metadata, back / up / refresh navigation, the
+  native folder picker, and loading, empty, and error states with recovery.
+- Browser store (`src/stores/browser-store.ts`): current location, navigation
+  history, and listing state, with a request token so a slow listing can never
+  overwrite a newer location.
+- Backend tests for volume classification, capacity derivation, Windows volume
+  probing, directory ordering and metadata, listing limits, symlink handling,
+  and read-error mapping; frontend tests for the volume schema, directory
+  listing service, browser store, volume list, directory browser, and the
+  rebuilt drives page.
 - Platform abstraction (`src-tauri/src/platform/`): OS identity, app directory
   resolution through Tauri's public path resolver, and drive-root enumeration
   (`GetLogicalDrives` on Windows, conventional mount points elsewhere).
@@ -39,6 +63,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `list_drives` returns the full volume contract (identity, kind, filesystem,
+  capacity, status) instead of a root and a label. A volume whose media is not
+  ready is reported as unavailable rather than being dropped or invented.
+- Volume enumeration and all filesystem commands run on the blocking pool, so
+  the Tauri event loop never waits on a slow or disconnected volume.
+- The Drives page is now the storage browser: volumes are listed with their
+  metadata, and folders can be opened, navigated with back/up, and refreshed.
+  The native folder picker opens the picked folder in the browser instead of
+  only displaying its metadata.
 - Settings are now owned and persisted by the Rust backend and exposed over
   typed IPC commands (`get_settings`, `update_settings`) returning structured
   errors (`code` + `message`). A validated localStorage fallback keeps browser

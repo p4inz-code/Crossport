@@ -19,15 +19,16 @@ Status: Approved
 | --- | --- |
 | `services/ipc` | Error contract, code mapping, unknown codes, argument forwarding, schema rejection, runtime detection |
 | `services/settings-service` | Browser fallback, validation before/after IPC, backend error passthrough |
-| `services/drives-service` | Payload parsing, empty lists, contract violations, browser unavailability |
+| `services/drives-service` | Volume payload parsing (including unknown facts), empty lists, contract violations, browser unavailability |
 | `services/system-service` | Platform parsing, unknown platform rejection |
-| `services/filesystem-service` | Path inspection, cancelled dialogs, contract violations |
+| `services/filesystem-service` | Path inspection, directory listings, cancelled dialogs, structured failures (`path_not_found`, `path_not_directory`, `permission_denied`), contract violations |
 | `stores/settings-store` | Hydration, local validation, persisted writes, failure surfacing |
-| `stores/drives-store` | Refresh, empty results, structured failures, recovery |
+| `stores/drives-store` | Refresh, empty results, unreported volume metadata, structured failures, recovery |
+| `stores/browser-store` | Opening locations, backend-normalized paths, back/up/refresh, stale-response protection, error surfacing, recovery, leaving the browser |
 | `stores/system-store` | Hydration and browser-mode failure |
 | `types/*` | Schema acceptance and rejection per rule |
 | `lib/*` | Formatters and class composition |
-| `features/**/*.test.tsx` | Page rendering for the drives and settings pages, including error states |
+| `features/**/*.test.tsx` | Volume metadata rendering, capacity meters, entry tables, navigation controls, and the loading/empty/error states of the drives page and the settings page |
 
 Run with `pnpm test` (or `pnpm --filter desktop test`).
 
@@ -40,7 +41,9 @@ Run with `pnpm test` (or `pnpm --filter desktop test`).
 | `state` | Default state, settings replacement under the lock |
 | `platform` | OS mapping, identifier stability, `SystemInfo` payload shape |
 | `platform::paths` | Config file resolution inside the config directory |
-| `platform::drives` | Label derivation, filtering non-directories, dedupe/sort stability, host enumeration |
+| `platform::volume` | Drive-type classification, capacity derivation (underflow, inconsistent, missing values), label fallback, ordering, camelCase payload |
+| `platform::drives` | Dedupe/sort stability, host enumeration, Windows probing (kind, filesystem, capacity consistency, mounted status) |
+| `filesystem::directory` | Ordering (directories first), file/directory metadata, listing limits and truncation, symlink and broken-link handling, path validation, read-error mapping |
 | `filesystem::path` | Empty/null/relative rejection, lexical cleanup, root-escape rejection, directory validation |
 | `filesystem::metadata` | File/dir/root descriptions, missing paths, camelCase payload |
 

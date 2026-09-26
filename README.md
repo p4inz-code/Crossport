@@ -6,15 +6,24 @@ Free forever. Offline first. No accounts, no ads, no telemetry.
 
 ## Status
 
-Phase 1 (engineering foundation) is complete. The repository currently provides:
+Phase 2 (volumes and filesystem browsing) is complete. The repository currently
+provides:
 
 - A Tauri 2 desktop shell (React 19 + TypeScript + Vite frontend, Rust backend)
 - A design-token-driven UI system with light/dark/system themes
 - A typed IPC layer with structured `{ code, message }` errors end to end
 - Backend-owned, validated, persisted settings
-- A platform abstraction (OS identity, app directories, storage roots)
-- A filesystem foundation (path normalization, directory validation, metadata)
-- A drive-enumeration foundation listing the storage roots the host exposes
+- Volume detection with real metadata: kind (fixed, removable, network, optical,
+  RAM disk, or unknown), volume name, filesystem type, total/free/used capacity,
+  read-only flag, and mounted status. Windows volumes are probed through the
+  Win32 volume APIs; anything a platform cannot report stays unknown
+- A storage browser: pick a volume, open its folders, navigate back and up,
+  refresh, and see every entry with its size, modification time, and kind
+- Safe navigation: every path is validated in Rust before it is read, listings
+  never recurse, and symlinks/reparse points are reported but never followed
+- A filesystem foundation (path normalization, directory validation, metadata,
+  single-directory listing)
+- A platform abstraction (OS identity, app directories, volumes)
 - A native folder picker hosted in Rust
 - Windows-safe production logging (stdout + rotating per-app log file)
 - A restrictive CSP and a minimal Tauri capability set
@@ -81,8 +90,8 @@ that own all IPC (`src/services/`), and token-driven UI primitives. Every
 backend call goes through one transport module that validates payloads and
 normalizes failures into `IpcError` with a stable code. The Rust backend owns
 user settings, persists them to the platform app-config directory, and exposes
-commands for settings, platform facts, drive enumeration, path inspection, and
-the native folder picker. Filesystem and platform work stays in Rust, so the
+commands for settings, platform facts, volume detection, directory listing,
+path inspection, and the native folder picker. Filesystem and platform work stays in Rust, so the
 webview is granted only Tauri core defaults.
 
 See [`docs/architecture/SYSTEM_ARCHITECTURE.md`](docs/architecture/SYSTEM_ARCHITECTURE.md)

@@ -8,8 +8,10 @@
 
 pub mod drives;
 pub mod paths;
+pub mod volume;
 
 pub use paths::AppPaths;
+pub use volume::DriveInfo;
 
 use serde::{Deserialize, Serialize};
 

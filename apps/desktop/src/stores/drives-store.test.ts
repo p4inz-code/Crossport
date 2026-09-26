@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as service from "@/services/drives-service";
 import { IpcError } from "@/services/ipc";
+import { makeVolume } from "@/test/fixtures";
 import { useDrivesStore } from "./drives-store";
 
 vi.mock("@/services/drives-service", () => ({
@@ -8,6 +9,19 @@ vi.mock("@/services/drives-service", () => ({
 }));
 
 const mockedListDrives = vi.mocked(service.listDrives);
+
+const SYSTEM = makeVolume();
+const MEDIA = makeVolume({
+  id: "D:",
+  root: "D:\\",
+  label: "MEDIA",
+  name: "MEDIA",
+  kind: "removable",
+  filesystem: "exFAT",
+  totalBytes: 64 * 1024 ** 3,
+  freeBytes: 8 * 1024 ** 3,
+  usedBytes: 56 * 1024 ** 3,
+});
 
 describe("drives store", () => {
   beforeEach(() => {
@@ -20,20 +34,34 @@ describe("drives store", () => {
     expect(useDrivesStore.getState().drives).toEqual([]);
   });
 
-  it("stores the drives reported by the backend", async () => {
-    mockedListDrives.mockResolvedValue([
-      { root: "C:\\", label: "C:" },
-      { root: "D:\\", label: "D:" },
-    ]);
+  it("stores the volumes reported by the backend", async () => {
+    mockedListDrives.mockResolvedValue([SYSTEM, MEDIA]);
 
     await useDrivesStore.getState().refresh();
 
-    expect(useDrivesStore.getState().drives).toEqual([
-      { root: "C:\\", label: "C:" },
-      { root: "D:\\", label: "D:" },
-    ]);
+    expect(useDrivesStore.getState().drives).toEqual([SYSTEM, MEDIA]);
     expect(useDrivesStore.getState().status).toBe("ready");
     expect(useDrivesStore.getState().error).toBeNull();
+  });
+
+  it("keeps volumes the platform could not fully describe", async () => {
+    const optical = makeVolume({
+      id: "E:",
+      root: "E:\\",
+      label: "E:",
+      kind: "optical",
+      filesystem: null,
+      totalBytes: null,
+      freeBytes: null,
+      usedBytes: null,
+      mounted: false,
+    });
+    mockedListDrives.mockResolvedValue([optical]);
+
+    await useDrivesStore.getState().refresh();
+
+    expect(useDrivesStore.getState().drives).toEqual([optical]);
+    expect(useDrivesStore.getState().status).toBe("ready");
   });
 
   it("reports an empty result as a ready state", async () => {
@@ -46,10 +74,7 @@ describe("drives store", () => {
   });
 
   it("surfaces a structured error and clears stale drives", async () => {
-    useDrivesStore.setState({
-      drives: [{ root: "C:\\", label: "C:" }],
-      status: "ready",
-    });
+    useDrivesStore.setState({ drives: [SYSTEM], status: "ready" });
     mockedListDrives.mockRejectedValue(
       new IpcError("permission_denied", "permission denied: volume is locked"),
     );
@@ -75,13 +100,11 @@ describe("drives store", () => {
     await useDrivesStore.getState().refresh();
     expect(useDrivesStore.getState().status).toBe("error");
 
-    mockedListDrives.mockResolvedValue([{ root: "/", label: "/" }]);
+    mockedListDrives.mockResolvedValue([SYSTEM]);
     await useDrivesStore.getState().refresh();
 
     expect(useDrivesStore.getState().status).toBe("ready");
     expect(useDrivesStore.getState().error).toBeNull();
-    expect(useDrivesStore.getState().drives).toEqual([
-      { root: "/", label: "/" },
-    ]);
+    expect(useDrivesStore.getState().drives).toEqual([SYSTEM]);
   });
 });

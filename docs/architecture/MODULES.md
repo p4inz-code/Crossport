@@ -12,10 +12,10 @@ workspace. Modules are organized within the app, not as separate packages.
 | Module | Responsibility | Dependency rules |
 | --- | --- | --- |
 | `app/` | Application shell, providers, root routing | Depends on layouts, components, stores, features |
-| `features/` | Implemented feature folders: `drives`, `settings` | Each feature owns its pages; no cross-feature imports |
+| `features/` | Implemented feature folders: `drives` (volume list, directory browser, presentation helpers), `settings` | Each feature owns its pages and components; no cross-feature imports |
 | `components/ui/` | Reusable UI primitives (Button, Card, EmptyState, …) | No business logic; depends only on `lib`, tokens |
 | `layouts/` | AppShell, TopBar, Sidebar, StatusBar, PageContainer | Depends on components, stores, lib |
-| `stores/` | Zustand stores (app, system, drives, settings) | Owns client state; talks to services |
+| `stores/` | Zustand stores (app, system, drives, browser, settings) | Owns client state; talks to services |
 | `services/` | IPC transport (`ipc.ts`), per-domain services, validated storage | The only module allowed to call `invoke` |
 | `hooks/` | Shared hooks (e.g. `useThemeMode`) | Depends on stores, types |
 | `lib/` | Framework-agnostic utilities, constants, formatters | No dependencies on the rest of the app |
@@ -32,9 +32,9 @@ Phase 3 work and have no scaffolding.
 
 | Module | Responsibility |
 | --- | --- |
-| `commands/` | Tauri command layer, one submodule per domain (`settings`, `system`, `drives`, `filesystem`, `dialog`) |
-| `platform/` | Platform abstraction: `Platform`/`SystemInfo`, app directories (`AppPaths`), drive-root enumeration |
-| `filesystem/` | Path normalization and directory validation (`path.rs`), metadata inspection (`metadata.rs`) |
+| `commands/` | Tauri command layer, one submodule per domain (`settings`, `system`, `drives`, `filesystem`, `dialog`); blocking filesystem work runs on the blocking pool (`run_blocking`) |
+| `platform/` | Platform abstraction: `Platform`/`SystemInfo`, app directories (`AppPaths`), the volume model (`volume.rs`), and volume detection with Windows probing (`drives.rs`) |
+| `filesystem/` | Path normalization and directory validation (`path.rs`), metadata inspection (`metadata.rs`), single-directory listing (`directory.rs`) |
 | `settings/` | The single source of truth for user preferences; validation and file persistence |
 | `errors/` | `AppError` with structured `code`/`message` serialization |
 | `state/` | Managed `AppState` (config, platform, current settings) |

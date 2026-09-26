@@ -25,7 +25,7 @@ React UI (features, layouts, components)
         ↓  [IPC: structured JSON commands]
 Rust command layer (settings, system, drives, filesystem, dialog)
         ↓
-Rust domain modules (settings, platform, filesystem)
+Rust domain modules (settings, platform volumes, filesystem)
         ↓
 Operating system
 ```
@@ -34,7 +34,7 @@ Each layer communicates only with the layer beneath it. The webview has no
 direct filesystem or config access; all privileged work happens in Rust.
 The platform abstraction (`platform/`) is the single module that knows about the
 host OS: it resolves application directories through Tauri's public path
-resolver, reports OS identity, and enumerates storage roots.
+resolver, reports OS identity, and detects and classifies storage volumes.
 
 ## Key decisions
 
@@ -45,6 +45,23 @@ platform app-config directory, and exposed via `get_settings` /
 `update_settings`. Inputs are validated on both sides of the boundary. The
 frontend uses a schema-validated localStorage fallback only when running in a
 plain browser during development. See `docs/architecture/SETTINGS.md`.
+
+### Volume metadata and browsing (backend)
+
+Volumes are detected in Rust and described with what the platform can actually
+report: kind, volume name, filesystem, total/free/used capacity, read-only
+flag, and mounted status. On Windows the probing uses the Win32 volume APIs
+(`GetDriveTypeW`, `GetDiskFreeSpaceExW`, `GetVolumeInformationW`); other targets
+keep mount-point discovery and report the same fields as unknown. Facts the
+platform does not report stay unknown rather than being inferred.
+
+Directory browsing lists exactly one directory per request and never recurses.
+The path is validated in Rust (absolute, no null bytes, no root escape, must be
+an existing directory) before anything is read, symlinks and reparse points are
+reported but not followed, and the listing is capped so a huge folder cannot
+exhaust memory. Volume probing and every filesystem command run on the blocking
+pool, so the event loop stays responsive while the OS walks a directory or
+queries a slow volume.
 
 ### Structured errors
 

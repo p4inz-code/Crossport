@@ -10,6 +10,7 @@ use std::time::UNIX_EPOCH;
 use serde::Serialize;
 
 use crate::errors::AppResult;
+use crate::filesystem::display_name;
 
 /// Read-only metadata for one path.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -56,14 +57,6 @@ pub fn describe(path: &Path) -> AppResult<EntryMetadata> {
             .map(|elapsed| elapsed.as_millis() as u64),
         readonly: metadata.permissions().readonly(),
     })
-}
-
-/// `file_name` is `None` for filesystem roots, which would otherwise produce an
-/// empty label.
-fn display_name(path: &Path) -> String {
-    path.file_name()
-        .map(|name| name.to_string_lossy().into_owned())
-        .unwrap_or_else(|| path.display().to_string())
 }
 
 #[cfg(test)]

@@ -1,11 +1,13 @@
 /* ==========================================================================
  * Filesystem service
- * Path inspection and the native folder picker. Both keep filesystem access
- * in Rust: the frontend never touches a path itself and holds no filesystem
- * capability.
+ * Path inspection, directory listing, and the native folder picker. All three
+ * keep filesystem access in Rust: the frontend never touches a path itself and
+ * holds no filesystem capability.
  * ========================================================================== */
 
 import {
+  type DirectoryListing,
+  directoryListingSchema,
   type EntryMetadata,
   entryMetadataSchema,
   pickedDirectorySchema,
@@ -22,6 +24,20 @@ import { invokeTyped, requireDesktopRuntime } from "./ipc";
 export async function inspectPath(path: string): Promise<EntryMetadata> {
   requireDesktopRuntime("inspect_path");
   return invokeTyped("inspect_path", entryMetadataSchema, { path });
+}
+
+/**
+ * Lists one directory.
+ *
+ * The backend validates the path before reading anything, so a rejection is
+ * always a structured `IpcError`: `invalid_input` for a malformed path,
+ * `path_not_found` when the directory is gone (an unmounted or disconnected
+ * volume lands here), `path_not_directory` when the path is a file, and
+ * `permission_denied` when the OS refuses access.
+ */
+export async function listDirectory(path: string): Promise<DirectoryListing> {
+  requireDesktopRuntime("list_directory");
+  return invokeTyped("list_directory", directoryListingSchema, { path });
 }
 
 /**

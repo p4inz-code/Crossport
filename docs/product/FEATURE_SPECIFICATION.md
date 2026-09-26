@@ -1,4 +1,4 @@
-> **Status: roadmap — mostly not yet implemented.** This document describes the planned product scope; the repository currently implements the Phase 1 foundation (settings, platform, filesystem, drive enumeration, and native folder picking).
+> **Status: roadmap — mostly not yet implemented.** This document describes the planned product scope; the repository currently implements Phase 2 (settings, platform volumes, filesystem browsing, and native folder picking).
 # Feature Specification
 
 Version: 1.0

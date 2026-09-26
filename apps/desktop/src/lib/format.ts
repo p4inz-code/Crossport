@@ -5,9 +5,13 @@
 
 const UNITS = ["B", "KB", "MB", "GB", "TB", "PB"] as const;
 
-/** Formats a byte count for display, e.g. `2048` → `2 KB`. */
-export function formatBytes(bytes: number): string {
-  if (!Number.isFinite(bytes) || bytes < 0) {
+/**
+ * Formats a byte count for display, e.g. `2048` → `2 KB`. Backend values are
+ * optional — capacity and file sizes are unknown for some volumes and entries
+ * — so `null` renders as `Unknown` instead of a fabricated number.
+ */
+export function formatBytes(bytes: number | null): string {
+  if (bytes === null || !Number.isFinite(bytes) || bytes < 0) {
     return "Unknown";
   }
 

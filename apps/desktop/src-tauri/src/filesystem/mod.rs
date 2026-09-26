@@ -1,12 +1,25 @@
 /* ==========================================================================
  * Filesystem foundation
  * The safe primitives the transfer engine will be built on: absolute path
- * normalization, directory validation, and metadata inspection. Nothing here
- * mutates the filesystem — Phase 1 reads and validates only.
+ * normalization, directory validation, metadata inspection, and directory
+ * listing for the browser surface. Nothing here mutates the filesystem —
+ * CrossPort reads and validates only.
  * ========================================================================== */
 
+pub mod directory;
 pub mod metadata;
 pub mod path;
+
+use std::path::Path;
+
+/// Final path component for display. A filesystem root has no such component,
+/// so it keeps its own form (`C:\`, `/`) instead of rendering as an empty
+/// label.
+pub(crate) fn display_name(path: &Path) -> String {
+    path.file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_else(|| path.display().to_string())
+}
 
 #[cfg(test)]
 pub(crate) mod test_support {

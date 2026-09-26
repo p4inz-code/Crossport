@@ -1,4 +1,4 @@
-> **Status: partial — Phase 1 foundation implemented.** Path normalization and validation (`src-tauri/src/filesystem/path.rs`), metadata inspection (`metadata.rs`), drive-root enumeration (`platform/drives.rs`), and the native folder picker (`commands/dialog.rs`) exist today. Traversal, capacity, filesystem types, and the transfer engine are later phases. Sections below that describe unimplemented behavior are planning material.
+> **Status: partial — volumes and directory browsing implemented.** Path normalization and validation (`src-tauri/src/filesystem/path.rs`), metadata inspection (`metadata.rs`), single-directory listing (`directory.rs`), volume detection with classification and capacity (`platform/volume.rs`, `platform/drives.rs`), and the native folder picker (`commands/dialog.rs`) exist today. The transfer engine (copy/move, recursive traversal, hashing, verification) is a later phase. Sections below that describe unimplemented behavior are planning material.
 # CrossPort Filesystem Engine
 
 Version: 2.0
@@ -15,17 +15,19 @@ Its purpose is to hide platform differences while maintaining reliable file oper
 
 ---
 
-# Implemented today (Phase 1)
+# Implemented today
 
 | Capability | Module | Notes |
 | --- | --- |
 | Path validation | `filesystem/path.rs` | Must be absolute, no null bytes, `..` may not escape the root, `.` removed; resolved lexically with no filesystem access |
 | Directory validation | `filesystem/path.rs` | `must_be_directory` maps missing paths to `path_not_found` and files to `path_not_directory` |
 | Metadata access | `filesystem/metadata.rs` | Name, kind, symlink flag, size, modification time, read-only flag |
-| Drive discovery | `platform/drives.rs` | Storage roots that are readable directories, deduplicated and sorted |
+| Volume model | `platform/volume.rs` | Volume kind, name, filesystem, total/free/used capacity, read-only flag, mounted status; facts the platform does not report stay unknown |
+| Volume detection | `platform/drives.rs` | Candidates from the platform, probed on Windows through `GetDriveTypeW` / `GetDiskFreeSpaceExW` / `GetVolumeInformationW`, deduplicated and sorted |
+| Directory listing | `filesystem/directory.rs` | One directory per request, typed entries (name, path, kind, size, modified, read-only), directories before files, truncated at 10,000 entries, symlinks reported but never followed |
 | Native dialog | `commands/dialog.rs` | Folder selection validated before it reaches the frontend |
 
-Nothing in this layer mutates the filesystem.
+Nothing in this layer mutates the filesystem. No operation recurses: the browser lists one directory at a time, and nothing walks a tree until the transfer engine needs it.
 
 ---
 
@@ -87,14 +89,20 @@ Filesystem
 
 # Drive Discovery
 
-Drive detection should provide:
+Volume detection provides, where the platform reports it:
 
-- Name
-- Path
-- Size
-- Available space
+- Name (Windows volume label)
+- Path (mount root)
+- Size (total capacity)
+- Available space (free bytes; used bytes derived only when both are consistent)
 - Filesystem type
-- Connection status
+- Connection status (`mounted`)
+- Volume kind (fixed, removable, network, optical, RAM, unknown)
+- Read-only flag
+
+Anything the platform cannot report is returned as unknown rather than guessed
+at, and a volume type that cannot be classified (for example a mount point on
+Linux) is reported as `unknown`.
 
 ---
 

@@ -16,12 +16,12 @@ cross-platform file transfer utility.
 | --- | --- |
 | `src/app/` | Application shell, providers, root routing |
 | `src/components/` | Reusable UI primitives (Button, Card, EmptyState…) |
-| `src/features/` | Implemented feature folders (`drives`, `settings`) |
+| `src/features/` | Implemented feature folders (`drives`: volume list + directory browser, `settings`) |
 | `src/hooks/` | Shared hooks (e.g. `useThemeMode`) |
 | `src/layouts/` | AppShell, TopBar, Sidebar, StatusBar, PageContainer |
 | `src/lib/` | Framework-agnostic utilities, constants, formatters |
 | `src/services/` | IPC transport, error contract, and one service per backend domain |
-| `src/stores/` | Zustand stores (app, system, drives, settings) |
+| `src/stores/` | Zustand stores (app, system, drives, browser, settings) |
 | `src/styles/` | Design tokens and base styles |
 | `src/test/` | Vitest setup |
 | `src/types/` | Shared domain types and zod schemas mirroring the Rust payloads |
@@ -32,9 +32,9 @@ Dependency direction is inward: features → stores → services → types.
 
 | Module | Responsibility |
 | --- | --- |
-| `commands/` | Tauri command layer (`settings`, `system`, `drives`, `filesystem`, `dialog`) |
-| `platform/` | Platform abstraction: OS identity, app directories, drive roots |
-| `filesystem/` | Path normalization/validation and metadata inspection |
+| `commands/` | Tauri command layer (`settings`, `system`, `drives`, `filesystem`, `dialog`); filesystem work runs on the blocking pool |
+| `platform/` | Platform abstraction: OS identity, app directories, volume model (`volume.rs`), volume probing (`drives.rs`) |
+| `filesystem/` | Path normalization/validation, metadata inspection, single-directory listing (`directory.rs`) |
 | `settings/` | The single owner of user preferences; validation and file persistence |
 | `errors/` | `AppError` with structured `code`/`message` serialization |
 | `state/` | Managed `AppState` (config, platform, current settings) |
@@ -47,9 +47,20 @@ Dependency direction is inward: features → stores → services → types.
 | --- | --- |
 | `get_settings` / `update_settings` | Read and persist user preferences |
 | `get_system_info` | Platform, OS, arch, and family of the host |
-| `list_drives` | Storage roots the user can currently reach |
-| `inspect_path` | Normalize a path and report its metadata |
+| `list_drives` | Storage volumes with kind, filesystem, capacity, read-only flag, and mounted status |
+| `list_directory` | Validate a path and list one directory: entries with size, modification time, and read-only flag, directories first |
+| `inspect_path` | Normalize a path and report its metadata (used by transfer milestones for single paths) |
 | `pick_directory` | Native folder picker; returns a validated path or `null` |
+
+### Storage browser
+
+`src/features/drives/` turns the `list_drives` and `list_directory` commands into
+a desktop-style storage surface: a volume rail (kind icon, label, filesystem,
+capacity meter, status notes) next to a browser with back/up/refresh controls,
+the current location, an entry table, and loading, empty, and recovery states.
+Navigation state lives in `src/stores/browser-store.ts`, which only ever opens
+paths the backend produced and drops a listing that arrives after a newer
+navigation started.
 
 Errors cross the boundary as `{ code, message }`; codes are mirrored in
 `src/services/ipc.ts` and the Rust `AppError`. The webview is granted only
@@ -93,7 +104,7 @@ elevation, or transitions in components — use the tokens.
 
 ## Testing
 
-Unit, service, store, and page tests live next to the code
-(`src/**/*.test.{ts,tsx}`). The suite fails when zero test files are found, so
+Unit, service, store, component, and page tests live next to the code
+(`src/**/*.test.{ts,tsx}`); backend tests live in the modules they cover. The suite fails when zero test files are found, so
 a green `pnpm test` means tests actually ran. See
 `docs/development/TESTING_GUIDE.md`.

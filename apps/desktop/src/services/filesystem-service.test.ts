@@ -1,7 +1,12 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { inspectPath, pickDirectory } from "./filesystem-service";
+import { makeListing } from "@/test/fixtures";
+import {
+  inspectPath,
+  listDirectory,
+  pickDirectory,
+} from "./filesystem-service";
 import { IpcError } from "./ipc";
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -100,9 +105,99 @@ describe("filesystem service", () => {
     const inspectError = await inspectPath("C:\\").catch(
       (failure: unknown) => failure,
     );
+    const listError = await listDirectory("C:\\").catch(
+      (failure: unknown) => failure,
+    );
 
     expect((pickError as IpcError).code).toBe("unavailable");
     expect((inspectError as IpcError).code).toBe("unavailable");
+    expect((listError as IpcError).code).toBe("unavailable");
     expect(mockedInvoke).not.toHaveBeenCalled();
+  });
+});
+
+describe("directory listing service", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockedIsTauri.mockReturnValue(true);
+  });
+
+  it("returns the validated listing for a path", async () => {
+    const listing = makeListing();
+    mockedInvoke.mockResolvedValue(listing);
+
+    await expect(listDirectory("C:\\")).resolves.toEqual(listing);
+    expect(mockedInvoke).toHaveBeenCalledWith("list_directory", {
+      path: "C:\\",
+    });
+  });
+
+  it("accepts entries the platform could not describe", async () => {
+    const listing = makeListing({
+      entries: [
+        {
+          name: "dangling",
+          path: "C:\\dangling",
+          kind: "symlink",
+          sizeBytes: null,
+          modifiedMs: null,
+          readonly: null,
+        },
+      ],
+    });
+    mockedInvoke.mockResolvedValue(listing);
+
+    await expect(listDirectory("C:\\")).resolves.toEqual(listing);
+  });
+
+  it("rejects a listing that breaks the contract", async () => {
+    mockedInvoke.mockResolvedValue({ ...makeListing(), entries: "nope" });
+
+    const error = await listDirectory("C:\\").catch(
+      (failure: unknown) => failure,
+    );
+
+    expect(error).toBeInstanceOf(IpcError);
+    expect((error as IpcError).code).toBe("invalid_response");
+  });
+
+  it("keeps the structured error a disconnected volume produces", async () => {
+    mockedInvoke.mockRejectedValue({
+      code: "path_not_found",
+      message: "path not found: D:\\",
+    });
+
+    const error = await listDirectory("D:\\").catch(
+      (failure: unknown) => failure,
+    );
+
+    expect((error as IpcError).code).toBe("path_not_found");
+    expect((error as IpcError).message).toBe("path not found: D:\\");
+  });
+
+  it("keeps the code when a file is listed as a directory", async () => {
+    mockedInvoke.mockRejectedValue({
+      code: "path_not_directory",
+      message: "not a directory: C:\\notes.txt",
+    });
+
+    const error = await listDirectory("C:\\notes.txt").catch(
+      (failure: unknown) => failure,
+    );
+
+    expect((error as IpcError).code).toBe("path_not_directory");
+  });
+
+  it("keeps the code when the OS refuses access", async () => {
+    mockedInvoke.mockRejectedValue({
+      code: "permission_denied",
+      message: "permission denied: C:\\System Volume Information",
+    });
+
+    const error = await listDirectory("C:\\System Volume Information").catch(
+      (failure: unknown) => failure,
+    );
+
+    expect((error as IpcError).code).toBe("permission_denied");
   });
 });

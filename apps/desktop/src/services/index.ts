@@ -3,7 +3,11 @@
  * ========================================================================== */
 
 export { listDrives } from "./drives-service";
-export { inspectPath, pickDirectory } from "./filesystem-service";
+export {
+  inspectPath,
+  listDirectory,
+  pickDirectory,
+} from "./filesystem-service";
 export type {
   BackendErrorCode,
   ClientErrorCode,

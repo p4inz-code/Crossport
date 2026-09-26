@@ -1,70 +1,207 @@
 /* ==========================================================================
- * Drive enumeration foundation
- * Answers one question for Phase 1: which storage roots can the user reach
- * right now? Candidates come from the platform, are filtered down to readable
- * directories, deduplicated, and sorted so the list is stable between
- * refreshes.
+ * Volume enumeration
+ * Answers which storage volumes the user can reach right now, and what the
+ * platform can honestly report about each one. Candidates come from the
+ * platform, are deduplicated, probed, and sorted, so the list is stable
+ * between refreshes.
  *
- * Deliberately out of scope (Phase 2 drives feature): volume kinds
- * (fixed/removable/network/optical), capacity, filesystem type, and mount
- * table introspection.
+ * Windows is the primary target and uses the Win32 volume APIs
+ * (`GetDriveTypeW`, `GetDiskFreeSpaceExW`, `GetVolumeInformationW`) instead of
+ * string heuristics. Other platforms keep the Phase 1 mount-point discovery
+ * and report the volume kind and capacity as unknown rather than guessing;
+ * their platform modules grow the same level of detail in later phases.
+ *
+ * A volume appearing or disappearing between enumeration and probing is
+ * normal system behaviour: every probe is fallible and a failed probe yields
+ * fewer facts, never a crash.
  * ========================================================================== */
 
-use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
-use serde::Serialize;
+use crate::platform::volume::{dedupe_roots, sort_volumes, DriveInfo, VolumeFacts, VolumeKind};
 
-/// A storage root the user can browse.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct DriveInfo {
-    /// Absolute mount root, e.g. `C:\` or `/`.
-    pub root: String,
-    /// Short display label, e.g. `C:` or `/mnt/usb`.
-    pub label: String,
-}
-
-impl DriveInfo {
-    fn new(root: &Path) -> Self {
-        Self {
-            root: root.display().to_string(),
-            label: label_for(root),
-        }
-    }
-}
-
-/// Enumerates the storage roots available to the current user.
+/// Enumerates the storage volumes available to the current user.
 pub fn list_drives() -> Vec<DriveInfo> {
-    describe_roots(candidate_roots())
+    let roots = dedupe_roots(candidate_roots());
+    let mut volumes: Vec<DriveInfo> = roots.iter().filter_map(|root| probe(root)).collect();
+    sort_volumes(&mut volumes);
+    volumes
 }
 
-/// Turns raw candidate roots into the reported drive list: deduplicates,
-/// drops roots that cannot be read as directories, and sorts by path.
-fn describe_roots(roots: Vec<PathBuf>) -> Vec<DriveInfo> {
-    let unique: BTreeSet<PathBuf> = roots.into_iter().collect();
-    unique
-        .into_iter()
-        .filter(|root| root.is_dir())
-        .map(|root| DriveInfo::new(&root))
-        .collect()
-}
+/* ==========================================================================
+ * Windows probing
+ * ========================================================================== */
 
-/// Derives a short label from a root: `C:\` → `C:`, `/` → `/`,
-/// `/mnt/usb/` → `/mnt/usb`.
-fn label_for(root: &Path) -> String {
-    let display = root.display().to_string();
-    let trimmed = display.trim_end_matches(['\\', '/']);
-    if trimmed.is_empty() {
-        display
-    } else {
-        trimmed.to_string()
+/// `FILE_READ_ONLY_VOLUME` from `GetVolumeInformationW`'s file system flags.
+/// Spelled out here because the windows-sys constant lives behind a much
+/// larger feature gate than this crate needs.
+#[cfg(windows)]
+const FILE_READ_ONLY_VOLUME: u32 = 0x0008_0000;
+
+/// Probes a Windows drive letter or directory root.
+///
+/// Returns `None` only when the platform reports nothing at all — a drive
+/// letter with no mounted volume. An empty optical drive is still reported,
+/// with `mounted: false` and no capacity, because that is the honest answer.
+#[cfg(windows)]
+fn probe(root: &Path) -> Option<DriveInfo> {
+    let wide = wide_root(root);
+
+    // SAFETY: `wide` is NUL-terminated and outlives the call.
+    let drive_type =
+        unsafe { windows_sys::Win32::Storage::FileSystem::GetDriveTypeW(wide.as_ptr()) };
+    let kind = VolumeKind::from_windows_drive_type(drive_type);
+    let space = disk_space(&wide);
+    let information = volume_information(&wide);
+
+    if kind == VolumeKind::Unknown && space.is_none() && information.is_none() {
+        log::debug!(
+            "no volume information for '{}'; skipping it",
+            root.display()
+        );
+        return None;
     }
+
+    let (total_bytes, free_bytes) = match space {
+        Some((total, free)) => (Some(total), Some(free)),
+        None => (None, None),
+    };
+    let (name, filesystem, readonly) = match information {
+        Some(information) => (
+            information.name,
+            information.filesystem,
+            Some(information.readonly),
+        ),
+        None => (None, None, None),
+    };
+    // Media is reachable when either volume query answered; a disconnected
+    // share or a drive with no media answers neither.
+    let mounted = space.is_some() || readonly.is_some();
+
+    Some(DriveInfo::from_facts(
+        root,
+        VolumeFacts {
+            kind,
+            name,
+            filesystem,
+            total_bytes,
+            free_bytes,
+            readonly,
+            mounted,
+        },
+    ))
+}
+
+/// Volume queries take a root path and require a trailing separator, so the
+/// path is normalized into a NUL-terminated UTF-16 buffer.
+#[cfg(windows)]
+fn wide_root(root: &Path) -> Vec<u16> {
+    use std::os::windows::ffi::OsStrExt;
+
+    let mut wide: Vec<u16> = root.as_os_str().encode_wide().collect();
+    let ends_with_separator = matches!(wide.last(), Some(separator) if *separator == b'\\' as u16 || *separator == b'/' as u16);
+    if !ends_with_separator {
+        wide.push(b'\\' as u16);
+    }
+    wide.push(0);
+    wide
+}
+
+/// Reads a fixed-size UTF-16 buffer returned by Win32 and drops the trailing
+/// NUL. Returns `None` for an empty string so "not reported" and "empty" are
+/// the same thing to callers.
+#[cfg(windows)]
+fn wide_to_string(buffer: &[u16]) -> Option<String> {
+    let end = buffer
+        .iter()
+        .position(|unit| *unit == 0)
+        .unwrap_or(buffer.len());
+    let value = String::from_utf16_lossy(&buffer[..end]);
+    let value = value.trim();
+    if value.is_empty() {
+        None
+    } else {
+        Some(value.to_string())
+    }
+}
+
+/// Total and free capacity in bytes, or `None` when the volume cannot report
+/// them (media not ready, disconnected share, permission failure).
+#[cfg(windows)]
+fn disk_space(wide: &[u16]) -> Option<(u64, u64)> {
+    let mut available_to_caller: u64 = 0;
+    let mut total: u64 = 0;
+    let mut free: u64 = 0;
+
+    // SAFETY: all three pointers are valid for the duration of the call and
+    // `wide` is a NUL-terminated root path.
+    let succeeded = unsafe {
+        windows_sys::Win32::Storage::FileSystem::GetDiskFreeSpaceExW(
+            wide.as_ptr(),
+            &mut available_to_caller,
+            &mut total,
+            &mut free,
+        )
+    };
+
+    if succeeded == 0 {
+        return None;
+    }
+
+    // `free` is the space on the volume; `available_to_caller` is the
+    // quota-aware figure, which is not what a capacity display shows.
+    Some((total, free))
+}
+
+/// Volume name, filesystem type, and read-only flag.
+#[cfg(windows)]
+struct VolumeInformation {
+    name: Option<String>,
+    filesystem: Option<String>,
+    readonly: bool,
+}
+
+/// Queries `GetVolumeInformationW`. Fails for volumes whose media is not
+/// ready, which is reported as "no information" rather than an error.
+#[cfg(windows)]
+fn volume_information(wide: &[u16]) -> Option<VolumeInformation> {
+    // MAX_PATH + 1: the documented maximum for a volume label and for a
+    // filesystem name, both including the terminating NUL.
+    let mut name_buffer = [0u16; 261];
+    let mut filesystem_buffer = [0u16; 261];
+    let mut serial_number: u32 = 0;
+    let mut max_component_length: u32 = 0;
+    let mut flags: u32 = 0;
+
+    // SAFETY: every buffer is valid and its length is passed to the API, and
+    // `wide` is a NUL-terminated root path.
+    let succeeded = unsafe {
+        windows_sys::Win32::Storage::FileSystem::GetVolumeInformationW(
+            wide.as_ptr(),
+            name_buffer.as_mut_ptr(),
+            name_buffer.len() as u32,
+            &mut serial_number,
+            &mut max_component_length,
+            &mut flags,
+            filesystem_buffer.as_mut_ptr(),
+            filesystem_buffer.len() as u32,
+        )
+    };
+
+    if succeeded == 0 {
+        return None;
+    }
+
+    Some(VolumeInformation {
+        name: wide_to_string(&name_buffer),
+        filesystem: wide_to_string(&filesystem_buffer),
+        readonly: flags & FILE_READ_ONLY_VOLUME != 0,
+    })
 }
 
 /// Windows: drive letters come from the allocation table in the kernel, so a
-/// letter is reported even when its media is not ready — the `is_dir` filter
-/// in [`describe_roots`] is what drops unreadable drives.
+/// letter is reported even when its media is not ready — [`probe`] is what
+/// decides whether the letter describes a volume at all.
 #[cfg(windows)]
 fn candidate_roots() -> Vec<PathBuf> {
     // SAFETY: `GetLogicalDrives` takes no arguments, cannot fail with memory
@@ -91,6 +228,40 @@ fn candidate_roots() -> Vec<PathBuf> {
 #[cfg(windows)]
 fn letter_root(letter: u8) -> PathBuf {
     PathBuf::from(format!("{}:\\", letter as char))
+}
+
+/* ==========================================================================
+ * Other platforms
+ * Mount-point discovery from Phase 1, with the platform-reported facts that
+ * `std` can provide. Capacity and filesystem reporting for these targets
+ * arrive with their platform work; until then the fields stay unknown.
+ * ========================================================================== */
+
+/// Non-Windows: `std` cannot classify a mount, so the kind stays unknown and
+/// nothing is guessed at.
+#[cfg(not(windows))]
+fn probe(root: &Path) -> Option<DriveInfo> {
+    let metadata = match std::fs::metadata(root) {
+        Ok(metadata) => metadata,
+        Err(error) => {
+            log::debug!("skipping unreadable root '{}': {error}", root.display());
+            return None;
+        }
+    };
+
+    if !metadata.is_dir() {
+        return None;
+    }
+
+    Some(DriveInfo::from_facts(
+        root,
+        VolumeFacts {
+            kind: VolumeKind::Unknown,
+            readonly: Some(metadata.permissions().readonly()),
+            mounted: true,
+            ..VolumeFacts::default()
+        },
+    ))
 }
 
 /// macOS and Linux: `/` plus the conventional mount points. Discovery is
@@ -142,104 +313,151 @@ mod tests {
     use crate::filesystem::test_support::unique_temp_dir;
 
     #[test]
-    fn label_keeps_a_drive_root_intact() {
-        assert_eq!(label_for(Path::new("C:\\")), "C:");
-    }
-
-    #[test]
-    fn label_keeps_a_filesystem_root_intact() {
-        assert_eq!(label_for(Path::new("/")), "/");
-    }
-
-    #[test]
-    fn label_strips_a_trailing_separator() {
-        assert_eq!(label_for(Path::new("/mnt/usb/")), "/mnt/usb");
-        assert_eq!(label_for(Path::new("C:\\Work\\")), "C:\\Work");
-    }
-
-    #[test]
-    fn describe_roots_skips_roots_that_are_not_directories() {
-        let dir = unique_temp_dir("drives-missing");
-        let missing = dir.join("not-mounted");
-
-        let drives = describe_roots(vec![missing.clone()]);
-
-        assert!(drives.is_empty(), "unreadable roots must not be reported");
-        clean_up(&dir);
-    }
-
-    #[test]
-    fn describe_roots_deduplicates_and_sorts() {
-        let first = unique_temp_dir("drives-sort-a");
-        let second = unique_temp_dir("drives-sort-b");
-
-        let drives = describe_roots(vec![
-            second.clone(),
-            first.clone(),
-            first.clone(),
-            second.clone(),
-        ]);
-
-        assert_eq!(drives.len(), 2, "duplicate roots must collapse");
-        let roots: Vec<String> = drives.iter().map(|drive| drive.root.clone()).collect();
-        let mut expected = roots.clone();
-        expected.sort();
-        assert_eq!(roots, expected, "the drive list must have a stable order");
-
-        clean_up(&first);
-        clean_up(&second);
-    }
-
-    #[test]
-    fn describe_roots_reports_the_root_and_label() {
-        let dir = unique_temp_dir("drives-label");
-
-        let drives = describe_roots(vec![dir.clone()]);
-
-        assert_eq!(drives.len(), 1);
-        assert_eq!(drives[0].root, dir.display().to_string());
-        assert!(!drives[0].label.is_empty());
-
-        clean_up(&dir);
-    }
-
-    #[test]
-    fn list_drives_finds_at_least_one_storage_root_on_this_machine() {
-        let drives = list_drives();
+    fn list_drives_reports_at_least_one_volume_on_this_machine() {
+        let volumes = list_drives();
 
         assert!(
-            !drives.is_empty(),
-            "every supported platform reports at least one root"
+            !volumes.is_empty(),
+            "every supported platform reports at least one volume"
         );
-        for drive in &drives {
+        for volume in &volumes {
             assert!(
-                Path::new(&drive.root).is_absolute(),
+                Path::new(&volume.root).is_absolute(),
                 "root '{}' must be absolute",
-                drive.root
+                volume.root
             );
-            assert!(!drive.label.is_empty());
+            assert!(!volume.id.is_empty(), "a volume needs a stable identifier");
+            assert!(!volume.label.is_empty());
         }
     }
 
     #[test]
     fn list_drives_is_sorted_and_unique() {
-        let drives = list_drives();
-        let mut roots: Vec<&String> = drives.iter().map(|drive| &drive.root).collect();
-        let total = roots.len();
-        roots.sort();
-        roots.dedup();
-        assert_eq!(roots.len(), total, "reported drives must be unique");
+        let volumes = list_drives();
+        let mut ids: Vec<&String> = volumes.iter().map(|volume| &volume.id).collect();
+        let total = ids.len();
+        ids.sort();
+        ids.dedup();
+        assert_eq!(ids.len(), total, "reported volumes must be unique");
         assert_eq!(
-            drives.iter().map(|drive| &drive.root).collect::<Vec<_>>(),
-            roots,
-            "reported drives must be sorted"
+            volumes.iter().map(|volume| &volume.id).collect::<Vec<_>>(),
+            ids,
+            "reported volumes must be sorted"
         );
+    }
+
+    #[test]
+    fn candidate_roots_are_deduplicated_by_enumeration() {
+        let roots = candidate_roots();
+        let deduped = dedupe_roots(roots.clone());
+
+        assert_eq!(deduped.len(), deduped.iter().collect::<Vec<_>>().len());
+        assert!(
+            !roots.is_empty(),
+            "every supported platform has at least one candidate root"
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn reports_capacity_for_a_mounted_volume() {
+        let volumes = list_drives();
+        let mounted: Vec<&DriveInfo> = volumes.iter().filter(|volume| volume.mounted).collect();
+
+        assert!(
+            !mounted.is_empty(),
+            "the machine running the tests has at least one mounted volume"
+        );
+
+        let with_capacity = mounted
+            .iter()
+            .filter(|volume| volume.total_bytes.is_some())
+            .count();
+        assert!(with_capacity > 0, "a mounted volume reports total capacity");
+
+        for volume in mounted {
+            if let (Some(total), Some(free), Some(used)) =
+                (volume.total_bytes, volume.free_bytes, volume.used_bytes)
+            {
+                assert!(free <= total, "free space cannot exceed capacity");
+                assert_eq!(used, total - free, "used space must be consistent");
+            }
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn classifies_and_describes_the_system_volume() {
+        let volumes = list_drives();
+        let described: Vec<&DriveInfo> = volumes
+            .iter()
+            .filter(|volume| volume.mounted && volume.filesystem.is_some())
+            .collect();
+
+        assert!(
+            !described.is_empty(),
+            "a mounted Windows volume reports its filesystem"
+        );
+        for volume in described {
+            assert_ne!(
+                volume.kind,
+                VolumeKind::Unknown,
+                "a mounted volume with a filesystem is classifiable: {volume:?}"
+            );
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn probing_a_directory_reports_the_volume_that_holds_it() {
+        let dir = unique_temp_dir("drives-probe");
+
+        let volume = probe(&dir).expect("the temporary directory lives on a volume");
+
+        assert!(Path::new(&volume.root).is_absolute());
+        assert!(volume.mounted);
+        assert!(
+            volume.total_bytes.is_some(),
+            "a mounted volume reports total capacity"
+        );
+
+        clean_up(&dir);
     }
 
     #[cfg(not(windows))]
     #[test]
     fn unix_candidates_always_include_the_root() {
         assert!(candidate_roots().contains(&PathBuf::from("/")));
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn probe_skips_a_root_that_is_not_a_directory() {
+        let dir = unique_temp_dir("drives-missing");
+        let missing = dir.join("not-mounted");
+
+        assert!(
+            probe(&missing).is_none(),
+            "unreadable roots are not volumes"
+        );
+
+        clean_up(&dir);
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn probe_reports_a_directory_root_without_inventing_facts() {
+        let dir = unique_temp_dir("drives-probe-unix");
+
+        let volume = probe(&dir).expect("a readable directory is a volume");
+
+        assert_eq!(volume.kind, VolumeKind::Unknown);
+        assert_eq!(volume.total_bytes, None);
+        assert_eq!(volume.used_bytes, None);
+        assert_eq!(volume.filesystem, None);
+        assert!(volume.mounted);
+
+        clean_up(&dir);
     }
 
     #[cfg(not(windows))]

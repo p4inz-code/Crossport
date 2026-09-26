@@ -1,7 +1,7 @@
 /* ==========================================================================
  * Home page
  * Landing view. Reports what the backend actually told us at startup and
- * summarizes the Phase 1 foundation without claiming unimplemented features.
+ * summarizes what is implemented without claiming anything more.
  * ========================================================================== */
 
 import {
@@ -64,7 +64,7 @@ export function HomePage() {
       </Section>
 
       <Section
-        title="Phase 1 foundation"
+        title="Foundation"
         description="What exists today, verified by tests and CI."
       >
         <div className="home-grid">
@@ -84,15 +84,15 @@ export function HomePage() {
           </Card>
           <Card>
             <CardHeader
-              title="Drive enumeration"
-              description="Storage roots discovered on the host and validated"
+              title="Storage volumes"
+              description="Detected, classified, and measured in Rust"
               action={<HardDrive size={20} strokeWidth={1.75} />}
             />
           </Card>
           <Card>
             <CardHeader
-              title="Filesystem foundation"
-              description="Path normalization, directory validation, metadata"
+              title="Filesystem browsing"
+              description="Validated paths, directory listings, entry metadata"
               action={<FolderTree size={20} strokeWidth={1.75} />}
             />
           </Card>
