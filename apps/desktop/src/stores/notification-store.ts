@@ -33,6 +33,12 @@ export interface AppNotification {
   /** Event identifier, used together with `jobId` to deduplicate. */
   event: string;
   createdAtMs: number;
+  /**
+   * Route holding what the notification is about, when a surface can show it.
+   * A notification that says something happened should be able to take the
+   * user to it instead of leaving them to find it.
+   */
+  to: string | null;
 }
 
 /** Most notifications kept at once; the oldest are dropped. */
@@ -47,6 +53,7 @@ interface NotificationState {
     message: string;
     event: string;
     jobId?: string | null;
+    to?: string | null;
   }) => void;
   dismiss: (id: string) => void;
   clear: () => void;
@@ -76,6 +83,7 @@ export const useNotificationStore = create<NotificationState>((set) => ({
         jobId,
         event: input.event,
         createdAtMs: Date.now(),
+        to: input.to ?? null,
       };
 
       return {

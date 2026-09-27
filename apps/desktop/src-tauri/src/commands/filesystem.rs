@@ -8,6 +8,7 @@
 
 use crate::commands::run_blocking;
 use crate::errors::AppResult;
+use crate::filesystem::ancestors::{self, PathAncestor};
 use crate::filesystem::directory::{self, DirectoryListing};
 use crate::filesystem::metadata::{self, EntryMetadata};
 use crate::filesystem::path::normalize;
@@ -33,4 +34,14 @@ pub async fn inspect_path(path: String) -> AppResult<EntryMetadata> {
 #[tauri::command]
 pub async fn list_directory(path: String) -> AppResult<DirectoryListing> {
     run_blocking("list_directory", move || directory::list_requested(&path)).await
+}
+
+/// Describes a directory and every directory above it, oldest first.
+///
+/// This is what a breadcrumb trail is built from: the frontend never assembles
+/// a path, so each step it can navigate to has to be one Rust resolved. The
+/// requested path is normalized and must be an existing directory.
+#[tauri::command]
+pub async fn list_ancestors(path: String) -> AppResult<Vec<PathAncestor>> {
+    run_blocking("list_ancestors", move || ancestors::trail_for(&path)).await
 }

@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Product experience pass: the whole application now reads as one product.
+  The browser shows a backend-resolved breadcrumb trail and remembers where you
+  went (back, forward, up — buttons and `Alt`+arrow keys); the composer states
+  the source-to-destination mapping, counts, free space, conflict behaviour, the
+  verification policy, and the warnings before anything is queued; the queue
+  reports every status including verification and links a finished job to its
+  durable record; history and recovery are reachable from the notifications that
+  announce them.
+- Keyboard and accessibility: `Ctrl`/`Cmd`+`1`…`6` move between pages from one
+  navigation table, dialogs take and return focus and answer to `Esc`, the
+  close-confirmation dialog states its consequences in its button labels, and a
+  global `:focus-visible` ring covers every custom control.
+- Desktop lifecycle: closing the window while work is in flight is held by Rust
+  (`app:close-requested`) and answered in the interface, with `exit_app` as the
+  only way to end the process — and only after the user says so. A close with
+  nothing in flight is not intercepted.
+- Browser and composer backend support: `list_ancestors` (the path and every
+  directory above it, validated and labeled so the frontend never assembles a
+  path) and `exit_app`.
+- Skeleton honesty: a not-found route replaces the empty frame a stale link used
+  to leave behind, the home page reports live counts from the backend plus what
+  the application does and which shortcuts exist, and the application version is
+  shown as installed.
 - Post-transfer verification (`src-tauri/src/verification/`): three policies
   (`none`, `size`, `checksum`) mapped onto the method that actually ran. `size`
   compares each written file's byte count against the bytes streamed out of the

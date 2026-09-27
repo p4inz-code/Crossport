@@ -11,15 +11,17 @@
  *   only completion the page shows is the one the archive recorded.
  * ========================================================================== */
 
-import {
-  AlertTriangle,
-  RefreshCw,
-  ShieldAlert,
-  ShieldCheck,
-} from "lucide-react";
+import { RefreshCw, ShieldAlert, ShieldCheck } from "lucide-react";
 import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
-import { Button, EmptyState, LoadingState, Section } from "@/components/ui";
+import {
+  Button,
+  EmptyState,
+  LoadingState,
+  Notice,
+  Section,
+} from "@/components/ui";
 import { PageContainer } from "@/layouts";
 import { useRecoveryStore } from "@/stores";
 import { archiveLoadStateLabel, isDocumentNoteworthy } from "@/types";
@@ -27,6 +29,7 @@ import { RecoveryCard } from "../components/RecoveryCard";
 import "./RecoveryPage.css";
 
 export function RecoveryPage() {
+  const navigate = useNavigate();
   const candidates = useRecoveryStore((state) => state.candidates);
   const documentStatus = useRecoveryStore((state) => state.documentStatus);
   const writable = useRecoveryStore((state) => state.writable);
@@ -65,21 +68,18 @@ export function RecoveryPage() {
       }
     >
       {documentStatus !== null && isDocumentNoteworthy(documentStatus) ? (
-        <div className="recovery-page__degraded" role="alert">
-          <AlertTriangle size={18} strokeWidth={1.75} aria-hidden="true" />
-          <div>
-            <p className="recovery-page__degraded-title">
-              {archiveLoadStateLabel(documentStatus.state)}
-            </p>
-            <p className="recovery-page__degraded-detail">
-              {documentStatus.detail ??
-                "The interrupted-transfer state could not be used as written."}
-              {writable
-                ? " It was set aside so recovery can keep working; a transfer that was running may no longer be listed."
-                : " Its contents are untouched; this build will not overwrite a newer document."}
-            </p>
-          </div>
-        </div>
+        <Notice
+          tone="warning"
+          title={archiveLoadStateLabel(documentStatus.state)}
+          detail={`${
+            documentStatus.detail ??
+            "The interrupted-transfer state could not be used as written."
+          }${
+            writable
+              ? " It was set aside so recovery can keep working; a transfer that was running may no longer be listed."
+              : " Its contents are untouched; this build will not overwrite a newer document."
+          }`}
+        />
       ) : null}
 
       {loading && candidates.length === 0 ? (
@@ -87,20 +87,20 @@ export function RecoveryPage() {
       ) : null}
 
       {error !== null ? (
-        <div className="recovery-page__error" role="alert">
-          <p className="recovery-page__error-title">
-            Interrupted transfers could not be listed
-          </p>
-          <p className="recovery-page__error-message">
-            {error.message}
-            {error.code === "unavailable"
+        <Notice
+          tone="danger"
+          title="Interrupted transfers could not be listed"
+          detail={`${error.message}${
+            error.code === "unavailable"
               ? " Recovery state is stored by the desktop application."
-              : ""}
-          </p>
-          <Button variant="secondary" onClick={() => void load()}>
-            Try again
-          </Button>
-        </div>
+              : ""
+          }`}
+          action={
+            <Button variant="secondary" onClick={() => void load()}>
+              Try again
+            </Button>
+          }
+        />
       ) : null}
 
       {error === null && !loading && candidates.length === 0 ? (
@@ -133,6 +133,23 @@ export function RecoveryPage() {
             ))}
           </ul>
         </Section>
+      ) : null}
+
+      {candidates.length === 0 ? (
+        <Notice
+          tone="info"
+          title="What a decision would mean"
+          detail="Restarting runs the transfer again from the beginning and removes only its own partial files. Discarding removes those same files and records the episode. Confirming is only offered when the archive itself proves the transfer had already finished."
+          action={
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => navigate("/history")}
+            >
+              See past transfers
+            </Button>
+          }
+        />
       ) : null}
 
       <Section title="How recovery works">

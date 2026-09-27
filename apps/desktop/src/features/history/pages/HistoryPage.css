@@ -4,30 +4,6 @@
  * the numbers, then the verification verdict.
  * ========================================================================== */
 
-.history-page__degraded {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  padding: 12px 14px;
-  border: 1px solid var(--color-warning, #d97706);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--color-warning, #d97706) 8%, transparent);
-}
-
-.history-page__degraded-title {
-  margin: 0;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.history-page__degraded-detail {
-  margin: 2px 0 0;
-  font-size: 0.8125rem;
-  line-height: 1.5;
-  color: var(--color-text-muted);
-}
-
 /* A fieldset for its grouping semantics, reset so it lays out as a plain row. */
 .history-filters {
   display: flex;
@@ -39,28 +15,6 @@
 }
 
 .history-page__retention {
-  margin: 0;
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
-}
-
-.history-page__error {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: flex-start;
-  padding: 14px;
-  border: 1px solid var(--color-danger, #dc2626);
-  border-radius: 10px;
-}
-
-.history-page__error-title {
-  margin: 0;
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-
-.history-page__error-message {
   margin: 0;
   font-size: 0.8125rem;
   color: var(--color-text-muted);

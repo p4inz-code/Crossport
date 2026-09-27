@@ -3,12 +3,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as service from "@/services/filesystem-service";
 import { IpcError } from "@/services/ipc";
 import { makeListing } from "@/test/fixtures";
+import type { DirectoryListing } from "@/types";
 import { useBrowserStore } from "./browser-store";
 
 vi.mock("@/services/filesystem-service", () => ({
+  listAncestors: vi.fn(),
   listDirectory: vi.fn(),
 }));
 
+const mockedListAncestors = vi.mocked(service.listAncestors);
 const mockedListDirectory = vi.mocked(service.listDirectory);
 
 const ROOT = makeListing({ path: "C:\\", name: "C:\\", parent: null });
@@ -22,6 +25,8 @@ function resetBrowser(): void {
   useBrowserStore.setState({
     location: null,
     history: [],
+    future: [],
+    trail: [],
     listing: null,
     status: "idle",
     error: null,
@@ -32,6 +37,11 @@ describe("browser store", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetBrowser();
+    // The trail is what a breadcrumb is built from; a test that does not want
+    // to assert it gets one step, as the backend would return for a root.
+    mockedListAncestors.mockImplementation(async (path: string) => [
+      { path, label: path },
+    ]);
   });
 
   it("starts idle with nothing open", () => {
@@ -255,5 +265,87 @@ describe("browser store", () => {
     await useBrowserStore.getState().open("C:\\");
 
     expect(useBrowserStore.getState().history).toEqual([]);
+  });
+
+  it("reads the breadcrumb trail from the backend for the open location", async () => {
+    mockedListDirectory.mockResolvedValue(USERS);
+    mockedListAncestors.mockResolvedValue([
+      { path: "C:\\", label: "C:" },
+      { path: "C:\\Users", label: "Users" },
+    ]);
+
+    await useBrowserStore.getState().open("C:\\Users");
+
+    // The trail is asked for the path that was opened, and every step of it is
+    // the backend's own answer.
+    expect(mockedListAncestors).toHaveBeenCalledWith("C:\\Users");
+    expect(useBrowserStore.getState().trail).toEqual([
+      { path: "C:\\", label: "C:" },
+      { path: "C:\\Users", label: "Users" },
+    ]);
+  });
+
+  it("drops the trail while a new location loads", async () => {
+    mockedListDirectory.mockResolvedValue(ROOT);
+    await useBrowserStore.getState().open("C:\\");
+    expect(useBrowserStore.getState().trail).not.toEqual([]);
+
+    let release: (listing: DirectoryListing) => void = () => {};
+    mockedListDirectory.mockImplementation(
+      () =>
+        new Promise<DirectoryListing>((resolve) => {
+          release = resolve;
+        }),
+    );
+
+    const pending = useBrowserStore.getState().open("C:\\Users");
+    expect(useBrowserStore.getState().trail).toEqual([]);
+
+    release(USERS);
+    await pending;
+  });
+
+  it("keeps the folder usable when the trail cannot be read", async () => {
+    mockedListDirectory.mockResolvedValue(USERS);
+    mockedListAncestors.mockRejectedValue(
+      new IpcError("io", "the trail could not be read"),
+    );
+
+    await useBrowserStore.getState().open("C:\\Users");
+
+    // The directory is open, which is what the user asked for; only the
+    // breadcrumb is missing, and it falls back to the raw location.
+    expect(useBrowserStore.getState().status).toBe("ready");
+    expect(useBrowserStore.getState().location).toBe("C:\\Users");
+    expect(useBrowserStore.getState().trail).toEqual([]);
+  });
+
+  it("walks forward again after going back", async () => {
+    mockedListDirectory.mockImplementation(async (path: string) =>
+      path === "C:\\Users" ? USERS : ROOT,
+    );
+
+    await useBrowserStore.getState().open("C:\\");
+    await useBrowserStore.getState().open("C:\\Users");
+    await useBrowserStore.getState().goBack();
+
+    expect(useBrowserStore.getState().location).toBe("C:\\");
+    expect(useBrowserStore.getState().future).toEqual(["C:\\Users"]);
+
+    await useBrowserStore.getState().goForward();
+
+    expect(useBrowserStore.getState().location).toBe("C:\\Users");
+    expect(useBrowserStore.getState().future).toEqual([]);
+    expect(useBrowserStore.getState().history).toEqual(["C:\\"]);
+  });
+
+  it("does nothing when there is nowhere to go forward to", async () => {
+    mockedListDirectory.mockResolvedValue(ROOT);
+    await useBrowserStore.getState().open("C:\\");
+
+    await useBrowserStore.getState().goForward();
+
+    expect(mockedListDirectory).toHaveBeenCalledTimes(1);
+    expect(useBrowserStore.getState().location).toBe("C:\\");
   });
 });

@@ -6,6 +6,7 @@
  * CrossPort reads and validates only.
  * ========================================================================== */
 
+pub mod ancestors;
 pub mod directory;
 pub mod metadata;
 pub mod path;

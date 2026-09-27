@@ -37,7 +37,7 @@ describe("TransferDialog", () => {
     expect(
       screen.getByRole("dialog", { name: "Copy 1 item to Backup" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("into D:\\Backup")).toBeInTheDocument();
+    expect(screen.getByText("Into D:\\Backup")).toBeInTheDocument();
     expect(screen.getByText("4 KB")).toBeInTheDocument();
     expect(screen.getByText("D:\\Photos")).toBeInTheDocument();
     expect(screen.getByText("D:\\Backup\\Photos")).toBeInTheDocument();

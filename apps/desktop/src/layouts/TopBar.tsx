@@ -4,9 +4,10 @@
  * ========================================================================== */
 
 import { Monitor, Moon, Sun } from "lucide-react";
+import { useLocation } from "react-router-dom";
 
 import { useThemeMode } from "@/hooks";
-import { APP_NAME } from "@/lib";
+import { APP_NAME, routeLabel } from "@/lib";
 import { THEME_MODES, type ThemeMode } from "@/types";
 import "./TopBar.css";
 
@@ -18,6 +19,8 @@ const THEME_META: Record<ThemeMode, { label: string; icon: typeof Sun }> = {
 
 export function TopBar() {
   const { mode, setTheme } = useThemeMode();
+  // The section the user is actually in, so the bar never shows a stale label.
+  const section = routeLabel(useLocation().pathname);
 
   function cycleTheme() {
     const next =
@@ -34,7 +37,7 @@ export function TopBar() {
         <span className="topbar__separator" aria-hidden="true">
           /
         </span>
-        <span className="topbar__context">Application Foundation</span>
+        <span className="topbar__context">{section}</span>
       </div>
 
       <button

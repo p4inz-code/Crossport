@@ -24,7 +24,7 @@ Status: Approved
 | `services/filesystem-service` | Path inspection, directory listings, cancelled dialogs, structured failures (`path_not_found`, `path_not_directory`, `permission_denied`), contract violations |
 | `stores/settings-store` | Hydration, local validation, persisted writes, failure surfacing |
 | `stores/drives-store` | Refresh, empty results, unreported volume metadata, structured failures, recovery |
-| `stores/browser-store` | Opening locations, backend-normalized paths, back/up/refresh, stale-response protection, error surfacing, recovery, leaving the browser |
+| `stores/browser-store` | Opening locations, backend-normalized paths, back/forward/up/refresh, the breadcrumb trail (including a trail that cannot be read), stale-response protection, error surfacing, recovery, leaving the browser |
 | `stores/system-store` | Hydration and browser-mode failure |
 | `services/transfer-service` | Command payloads, argument forwarding, contract rejection, structured failures, event subscription (validated payloads, skipped garbage payloads, browser no-op) |
 | `stores/transfer-store` | Queue loading and ordering, snapshot merging by identifier, control calls and their failures, dismissals that ignore late events, clearing finished jobs, following the event feed |
@@ -34,7 +34,10 @@ Status: Approved
 | `stores/history-store`, `stores/recovery-store` | Listing and filtering, selection, degraded documents, recovery decisions and their failures |
 | `stores/notification-store` | Bounded, deduplicated notifications raised once per event |
 | `hooks/useRecoveryFeed`, `hooks/useTransferNotifications` | Startup recovery notice and terminal-transition announcements |
-| `features/**/*.test.tsx` | Volume metadata rendering, capacity meters, entry tables, navigation controls, multi-select and transfer actions, the loading/empty/error states of the drives page and the settings page, the transfer composer's dry run and conflict strategies, the queue surface's progress, issues, verification verdict, and controls, the history list / filters / details, the recovery page's outcomes and actions, and the notification stack |
+| `hooks/useAppShortcuts` | Route jumps from one navigation table, keystrokes in a field left alone, ambiguous combinations ignored, listener removed with the shell |
+| `layouts/CloseConfirmDialog` | The close question, its facts, Escape as the safe answer, the confirmed exit, and a close the backend refuses |
+| `features/**/*.test.tsx` | Volume metadata rendering, capacity meters, entry tables, the breadcrumb trail, navigation controls, multi-select and transfer actions, the loading/empty/error states of the drives page and the settings page, the transfer composer's dry run and conflict strategies, the queue surface's progress, issues, verification verdict, controls, and history link, the history list / filters / details, the recovery page's outcomes and actions, the notification stack's navigation and dismissal, and the home page's live counts and keyboard reference |
+| `app/journeys` | Whole journeys across the real pages with only the Rust boundary mocked: browse → review → queue → complete → notification → history, interrupted → notification → recovery decision, and a destination that disappeared reported as the backend's own structured error |
 
 Run with `pnpm test` (or `pnpm --filter desktop test`).
 

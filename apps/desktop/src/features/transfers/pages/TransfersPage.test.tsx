@@ -1,10 +1,11 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { IpcError } from "@/services/ipc";
 import * as service from "@/services/transfer-service";
 import { useTransferStore } from "@/stores";
 import { makeTransferSnapshot } from "@/test/fixtures";
+import { renderPage, withRouter } from "@/test/render-page";
 import { TransfersPage } from "./TransfersPage";
 
 vi.mock("@/services/transfer-service", () => ({
@@ -54,7 +55,7 @@ describe("TransfersPage", () => {
   it("shows the jobs the store holds, in order", () => {
     seed([ACTIVE, DONE]);
 
-    render(<TransfersPage />);
+    renderPage(<TransfersPage />);
 
     expect(screen.getByText("Transferring")).toBeInTheDocument();
     expect(screen.getByText("Completed")).toBeInTheDocument();
@@ -63,21 +64,21 @@ describe("TransfersPage", () => {
   });
 
   it("explains an empty queue", () => {
-    render(<TransfersPage />);
+    renderPage(<TransfersPage />);
 
     expect(screen.getByText("No transfers yet")).toBeInTheDocument();
   });
 
   it("offers to clear finished jobs only when there are some", async () => {
     seed([ACTIVE]);
-    const { rerender } = render(<TransfersPage />);
+    const { rerender } = renderPage(<TransfersPage />);
 
     expect(
       screen.getByRole("button", { name: /Clear finished/ }),
     ).toBeDisabled();
 
     seed([ACTIVE, DONE]);
-    rerender(<TransfersPage />);
+    rerender(withRouter(<TransfersPage />));
 
     const clear = screen.getByRole("button", { name: "Clear finished (1)" });
     expect(clear).toBeEnabled();
@@ -96,7 +97,7 @@ describe("TransfersPage", () => {
     seed([ACTIVE]);
     mockedPause.mockResolvedValue({ ...ACTIVE, status: "paused" });
 
-    render(<TransfersPage />);
+    renderPage(<TransfersPage />);
     fireEvent.click(screen.getByRole("button", { name: "Pause" }));
 
     expect(mockedPause).toHaveBeenCalledWith(ACTIVE.id);
@@ -110,7 +111,7 @@ describe("TransfersPage", () => {
       new IpcError("transfer_not_found", "transfer not found: transfer-a"),
     );
 
-    render(<TransfersPage />);
+    renderPage(<TransfersPage />);
     fireEvent.click(screen.getByRole("button", { name: "Pause" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
@@ -123,7 +124,7 @@ describe("TransfersPage", () => {
     seed([DONE]);
     mockedRemove.mockResolvedValue(undefined);
 
-    render(<TransfersPage />);
+    renderPage(<TransfersPage />);
     fireEvent.click(screen.getByRole("button", { name: /Remove from list/ }));
 
     await waitFor(() => {
@@ -138,7 +139,7 @@ describe("TransfersPage", () => {
       error: new IpcError("unavailable", "only available in the desktop app"),
     });
 
-    render(<TransfersPage />);
+    renderPage(<TransfersPage />);
     expect(screen.getByRole("alert")).toHaveTextContent(
       "only available in the desktop app",
     );
@@ -153,7 +154,7 @@ describe("TransfersPage", () => {
     seed([ACTIVE]);
     mockedList.mockResolvedValue([ACTIVE, DONE]);
 
-    render(<TransfersPage />);
+    renderPage(<TransfersPage />);
     fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
 
     expect(await screen.findByText("Completed")).toBeInTheDocument();

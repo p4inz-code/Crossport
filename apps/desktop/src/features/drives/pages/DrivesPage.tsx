@@ -17,14 +17,20 @@
 
 import { RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
-import { Button } from "@/components/ui";
+import { Button, Notice } from "@/components/ui";
 import { TransferDialog } from "@/features/transfers";
 import { PageContainer } from "@/layouts";
 import { pickDirectory } from "@/services/filesystem-service";
 import { toIpcError } from "@/services/ipc";
 import { planTransfer, startTransfer } from "@/services/transfer-service";
-import { useBrowserStore, useDrivesStore, useTransferStore } from "@/stores";
+import {
+  useBrowserStore,
+  useDrivesStore,
+  useSettingsStore,
+  useTransferStore,
+} from "@/stores";
 import {
   type ConflictStrategy,
   DEFAULT_CONFLICT_STRATEGY,
@@ -51,17 +57,23 @@ export function DrivesPage() {
   const refreshVolumes = useDrivesStore((state) => state.refresh);
 
   const location = useBrowserStore((state) => state.location);
+  const trail = useBrowserStore((state) => state.trail);
   const listing = useBrowserStore((state) => state.listing);
   const browserStatus = useBrowserStore((state) => state.status);
   const browserError = useBrowserStore((state) => state.error);
   const historyLength = useBrowserStore((state) => state.history.length);
+  const futureLength = useBrowserStore((state) => state.future.length);
   const open = useBrowserStore((state) => state.open);
   const refreshDirectory = useBrowserStore((state) => state.refresh);
   const goBack = useBrowserStore((state) => state.goBack);
+  const goForward = useBrowserStore((state) => state.goForward);
   const goUp = useBrowserStore((state) => state.goUp);
   const leave = useBrowserStore((state) => state.close);
 
   const trackTransfer = useTransferStore((state) => state.apply);
+  // The configured verification policy is shown in the composer and sent with
+  // the request, so what the dialog promises is what the job runs under.
+  const verificationPolicy = useSettingsStore((state) => state.verification);
 
   /** The "open folder" flow is waiting for the native dialog. */
   const [pickerBusy, setPickerBusy] = useState(false);
@@ -140,6 +152,7 @@ export function DrivesPage() {
         destination,
         operation,
         conflict: DEFAULT_CONFLICT_STRATEGY,
+        verification: verificationPolicy,
       });
     } catch (failure) {
       setAlertMessage(toIpcError(failure).message);
@@ -175,7 +188,7 @@ export function DrivesPage() {
       setNotice(
         `${snapshot.sources.length} ${
           snapshot.sources.length === 1 ? "item" : "items"
-        } queued for ${snapshot.operation}. Follow it on the Transfers page.`,
+        } queued for ${snapshot.operation}. It runs in the order it was accepted, and can be paused or cancelled from the queue.`,
       );
     } catch (failure) {
       setComposerError(toIpcError(failure).message);
@@ -200,9 +213,18 @@ export function DrivesPage() {
       }
     >
       {notice !== null ? (
-        <p className="storage-notice" role="status">
-          {notice}
-        </p>
+        <Notice
+          tone="info"
+          title="Transfer queued"
+          detail={notice}
+          action={
+            <Link to="/transfers">
+              <Button size="sm" variant="secondary">
+                Open the queue
+              </Button>
+            </Link>
+          }
+        />
       ) : null}
 
       <div className="storage-layout">
@@ -229,10 +251,12 @@ export function DrivesPage() {
         <div className="storage-layout__browser">
           <DirectoryBrowser
             location={location}
+            trail={trail}
             listing={listing}
             status={browserStatus}
             error={browserError}
             canGoBack={historyLength > 0}
+            canGoForward={futureLength > 0}
             canGoUp={
               listing !== null &&
               listing.parent !== null &&
@@ -242,6 +266,7 @@ export function DrivesPage() {
             transferBusy={transferBusy || composer !== null}
             alert={alertMessage}
             onBack={() => void goBack()}
+            onForward={() => void goForward()}
             onUp={() => void goUp()}
             onRefresh={() => void refreshDirectory()}
             onOpen={(path) => void open(path)}

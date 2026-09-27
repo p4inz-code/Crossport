@@ -11,7 +11,7 @@
  * partial output the job had written, so the button asks before it does that.
  * ========================================================================== */
 
-import { Play, Trash2, TriangleAlert, X } from "lucide-react";
+import { History, Play, Trash2, TriangleAlert, X } from "lucide-react";
 import { useState } from "react";
 
 import { Button, EmptyState, LoadingState } from "@/components/ui";
@@ -65,6 +65,10 @@ interface TransferQueueProps {
   onCancel: (id: string) => void;
   onRemove: (id: string) => void;
   onRetry: () => void;
+  /** Sends the user to the browser to compose a transfer. */
+  onBrowse: () => void;
+  /** Opens the durable record of a finished job. */
+  onOpenHistory: (id: string) => void;
 }
 
 export function TransferQueue({
@@ -78,6 +82,8 @@ export function TransferQueue({
   onCancel,
   onRemove,
   onRetry,
+  onBrowse,
+  onOpenHistory,
 }: TransferQueueProps) {
   return (
     <div className="transfer-queue">
@@ -101,6 +107,7 @@ export function TransferQueue({
           icon={EMPTY_QUEUE_ICON}
           title="No transfers yet"
           description="Open the Drives page, select the items you want to move, and choose Copy to… or Move to…."
+          action={<Button onClick={onBrowse}>Browse files</Button>}
         />
       ) : null}
 
@@ -116,6 +123,7 @@ export function TransferQueue({
               onResume={onResume}
               onCancel={onCancel}
               onRemove={onRemove}
+              onOpenHistory={onOpenHistory}
             />
           ))}
         </ul>
@@ -132,6 +140,7 @@ interface TransferCardProps {
   onResume: (id: string) => void;
   onCancel: (id: string) => void;
   onRemove: (id: string) => void;
+  onOpenHistory: (id: string) => void;
 }
 
 function TransferCard({
@@ -142,6 +151,7 @@ function TransferCard({
   onResume,
   onCancel,
   onRemove,
+  onOpenHistory,
 }: TransferCardProps) {
   const [confirmingCancel, setConfirmingCancel] = useState(false);
 
@@ -158,7 +168,7 @@ function TransferCard({
   const showsVerification = verification.status !== "pending";
 
   return (
-    <li className="transfer-card">
+    <li className="transfer-card" aria-busy={busy ? "true" : undefined}>
       <div className="transfer-card__header">
         <span className="transfer-card__title" title={job.sources.join(", ")}>
           {title}
@@ -374,6 +384,18 @@ function TransferCard({
               Keep it
             </Button>
           </div>
+        ) : null}
+
+        {isFinished(job) ? (
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => onOpenHistory(job.id)}
+            title="This job is recorded in the durable history"
+          >
+            <History size={15} strokeWidth={1.75} aria-hidden="true" />
+            View in history
+          </Button>
         ) : null}
 
         {isFinished(job) ? (

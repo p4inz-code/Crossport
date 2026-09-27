@@ -5,6 +5,7 @@
  * contract: rename them only together with the matching service.
  * ========================================================================== */
 
+pub mod app;
 pub mod dialog;
 pub mod drives;
 pub mod filesystem;

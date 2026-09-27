@@ -36,6 +36,21 @@
   outline-offset: 1px;
 }
 
+/* Explanatory line under a control: what the choice actually does. */
+.settings-note {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--color-text-muted);
+}
+
+/* A caveat rather than a description: quieter, but never hidden. */
+.settings-note--muted {
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-text-subtle);
+}
+
 .settings-status {
   display: flex;
   flex-direction: column;

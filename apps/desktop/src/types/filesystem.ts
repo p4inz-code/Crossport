@@ -52,5 +52,21 @@ export const directoryListingSchema = z.object({
 
 export type DirectoryListing = z.infer<typeof directoryListingSchema>;
 
+/**
+ * One step of a breadcrumb trail, from `list_ancestors`.
+ *
+ * The label is the directory's own name (or a root's own form), and the path is
+ * the absolute path Rust resolved — the frontend never assembles one, so these
+ * are the only locations a breadcrumb can offer.
+ */
+export const pathAncestorSchema = z.object({
+  path: z.string().min(1),
+  label: z.string().min(1),
+});
+
+export type PathAncestor = z.infer<typeof pathAncestorSchema>;
+
+export const pathAncestorsSchema = z.array(pathAncestorSchema);
+
 /** Payload of the `pick_directory` command: a path, or `null` on cancel. */
 export const pickedDirectorySchema = z.string().min(1).nullable();

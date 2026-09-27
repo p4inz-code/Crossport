@@ -1,35 +1,36 @@
 /* ==========================================================================
  * Notification stack
- * A small, dismissible column in the corner. Colors follow the shared tokens
- * so a notification reads the same in either theme.
+ * A small, dismissible column in the corner. Every color and size comes from
+ * the shared tokens, so a notification reads the same in either theme and
+ * matches the rest of the application.
  * ========================================================================== */
 
 .notification-stack {
   position: fixed;
-  right: 20px;
-  bottom: 20px;
+  right: var(--space-5);
+  bottom: var(--space-5);
   z-index: 40;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  width: min(360px, calc(100vw - 40px));
+  gap: var(--space-2-5);
+  width: min(22rem, calc(100vw - var(--space-10)));
 }
 
 .notification {
   display: grid;
   grid-template-columns: auto 1fr auto;
-  gap: 10px;
+  gap: var(--space-2-5);
   align-items: start;
-  padding: 12px 12px 12px 14px;
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-3-5);
   border: 1px solid var(--color-border);
-  border-left-width: 3px;
-  border-radius: 10px;
-  background: var(--color-surface);
-  box-shadow: 0 10px 24px rgb(15 23 42 / 12%);
+  border-left: 3px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow-lg);
 }
 
 .notification__icon {
-  margin-top: 2px;
+  margin-top: 0.125rem;
   color: var(--color-text-muted);
 }
 
@@ -39,65 +40,85 @@
 
 .notification__title {
   margin: 0;
-  font-size: 0.875rem;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
   color: var(--color-text);
 }
 
 .notification__message {
-  margin: 2px 0 0;
-  font-size: 0.8125rem;
-  line-height: 1.45;
+  margin: var(--space-0-5) 0 0;
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
   color: var(--color-text-muted);
   overflow-wrap: anywhere;
+}
+
+.notification__action {
+  margin-top: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface-raised);
+  color: var(--color-primary);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+}
+
+.notification__action:hover {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-subtle);
+}
+
+.notification__action:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
 }
 
 .notification__dismiss {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 1.5rem;
+  height: 1.5rem;
   border: none;
-  border-radius: 6px;
-  background: transparent;
+  border-radius: var(--radius-sm);
+  background-color: transparent;
   color: var(--color-text-muted);
-  cursor: pointer;
 }
 
 .notification__dismiss:hover {
-  background: var(--color-surface-muted);
+  background-color: var(--color-surface-subtle);
   color: var(--color-text);
 }
 
 .notification--success {
-  border-left-color: var(--color-success, #16a34a);
+  border-left-color: var(--color-success);
 }
 
 .notification--success .notification__icon {
-  color: var(--color-success, #16a34a);
+  color: var(--color-success);
 }
 
 .notification--warning {
-  border-left-color: var(--color-warning, #d97706);
+  border-left-color: var(--color-warning);
 }
 
 .notification--warning .notification__icon {
-  color: var(--color-warning, #d97706);
+  color: var(--color-warning);
 }
 
 .notification--error {
-  border-left-color: var(--color-danger, #dc2626);
+  border-left-color: var(--color-danger);
 }
 
 .notification--error .notification__icon {
-  color: var(--color-danger, #dc2626);
+  color: var(--color-danger);
 }
 
 .notification--info {
-  border-left-color: var(--color-accent, #2563eb);
+  border-left-color: var(--color-primary);
 }
 
 .notification--info .notification__icon {
-  color: var(--color-accent, #2563eb);
+  color: var(--color-primary);
 }

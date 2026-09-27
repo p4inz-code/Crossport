@@ -1,16 +1,11 @@
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import * as service from "@/services/history-service";
 import { IpcError } from "@/services/ipc";
 import { useHistoryStore } from "@/stores";
 import { makeHistoryRecord } from "@/test/fixtures";
+import { renderPage } from "@/test/render-page";
 import type { ArchiveStatus, HistoryFilter } from "@/types";
 import { HistoryPage } from "./HistoryPage";
 
@@ -82,7 +77,7 @@ describe("HistoryPage", () => {
     mockedList.mockResolvedValue(listing());
     mockedStatus.mockResolvedValue(ARCHIVE);
 
-    render(<HistoryPage />);
+    renderPage(<HistoryPage />);
 
     expect(await screen.findByText("Completed")).toBeInTheDocument();
     expect(
@@ -102,7 +97,7 @@ describe("HistoryPage", () => {
     mockedList.mockResolvedValue(listing([failed]));
     mockedStatus.mockResolvedValue(ARCHIVE);
 
-    render(<HistoryPage />);
+    renderPage(<HistoryPage />);
     fireEvent.click(await findRow(/Failed/));
 
     expect(await screen.findByText("Why it failed")).toBeInTheDocument();
@@ -128,7 +123,7 @@ describe("HistoryPage", () => {
     mockedList.mockResolvedValue(listing([failed]));
     mockedStatus.mockResolvedValue(ARCHIVE);
 
-    render(<HistoryPage />);
+    renderPage(<HistoryPage />);
     fireEvent.click(await findRow(/Failed/));
 
     expect(await screen.findByText("Items reported")).toBeInTheDocument();
@@ -141,7 +136,7 @@ describe("HistoryPage", () => {
     mockedList.mockResolvedValue(listing());
     mockedStatus.mockResolvedValue(ARCHIVE);
 
-    render(<HistoryPage />);
+    renderPage(<HistoryPage />);
     await screen.findByText("Completed");
     fireEvent.click(screen.getByRole("button", { name: /Cancelled/ }));
 
@@ -154,7 +149,7 @@ describe("HistoryPage", () => {
     );
     mockedStatus.mockResolvedValue(ARCHIVE);
 
-    render(<HistoryPage />);
+    renderPage(<HistoryPage />);
 
     expect(
       await screen.findByText("No verification recorded"),
@@ -167,7 +162,7 @@ describe("HistoryPage", () => {
     mockedStatus.mockResolvedValue(ARCHIVE);
     mockedDelete.mockResolvedValue(true);
 
-    render(<HistoryPage />);
+    renderPage(<HistoryPage />);
     fireEvent.click(await findRow(/Completed/));
     fireEvent.click(screen.getByRole("button", { name: /Delete record/ }));
 
@@ -178,7 +173,7 @@ describe("HistoryPage", () => {
     mockedList.mockResolvedValue(listing([]));
     mockedStatus.mockResolvedValue(ARCHIVE);
 
-    render(<HistoryPage />);
+    renderPage(<HistoryPage />);
     await screen.findByText("No transfers match this filter");
 
     expect(
@@ -193,7 +188,7 @@ describe("HistoryPage", () => {
     });
     mockedStatus.mockResolvedValue({ ...ARCHIVE, degraded: true });
 
-    render(<HistoryPage />);
+    renderPage(<HistoryPage />);
 
     expect(
       await screen.findByText("Unusable and set aside"),
@@ -213,7 +208,7 @@ describe("HistoryPage", () => {
       degraded: true,
     });
 
-    render(<HistoryPage />);
+    renderPage(<HistoryPage />);
 
     expect(
       await screen.findByText("Written by a newer version"),
@@ -227,7 +222,7 @@ describe("HistoryPage", () => {
     mockedList.mockRejectedValue(new IpcError("unavailable", "desktop only"));
     mockedStatus.mockRejectedValue(new IpcError("unavailable", "desktop only"));
 
-    render(<HistoryPage />);
+    renderPage(<HistoryPage />);
 
     expect(
       await screen.findByText("History could not be loaded"),

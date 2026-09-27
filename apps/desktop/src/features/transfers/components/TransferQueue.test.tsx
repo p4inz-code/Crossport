@@ -27,6 +27,8 @@ function renderQueue(
       onCancel={vi.fn()}
       onRemove={vi.fn()}
       onRetry={vi.fn()}
+      onBrowse={vi.fn()}
+      onOpenHistory={vi.fn()}
       {...overrides}
     />,
   );
@@ -36,10 +38,34 @@ const RUNNING = makeTransferSnapshot({ id: "transfer-1" });
 
 describe("TransferQueue", () => {
   it("asks the user to start a transfer when the queue is empty", () => {
-    renderQueue({ status: "ready" });
+    const onBrowse = vi.fn();
+    renderQueue({ status: "ready", onBrowse });
 
     expect(screen.getByText("No transfers yet")).toBeInTheDocument();
     expect(screen.queryByRole("list")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Browse files" }));
+    expect(onBrowse).toHaveBeenCalledTimes(1);
+  });
+
+  it("links a finished job to its durable record", () => {
+    const onOpenHistory = vi.fn();
+    renderQueue({
+      jobs: [makeTransferSnapshot({ id: "transfer-7", status: "completed" })],
+      status: "ready",
+      onOpenHistory,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /View in history/ }));
+    expect(onOpenHistory).toHaveBeenCalledWith("transfer-7");
+  });
+
+  it("offers no history link while a job is still moving", () => {
+    renderQueue({ jobs: [RUNNING], status: "ready" });
+
+    expect(
+      screen.queryByRole("button", { name: /View in history/ }),
+    ).toBeNull();
   });
 
   it("shows a loading state while the queue is read", () => {

@@ -8,10 +8,17 @@
  * above the list rather than rendered as an empty history.
  * ========================================================================== */
 
-import { AlertTriangle, Eraser, History, RefreshCw } from "lucide-react";
+import { Eraser, History, RefreshCw } from "lucide-react";
 import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
-import { Button, EmptyState, LoadingState, Section } from "@/components/ui";
+import {
+  Button,
+  EmptyState,
+  LoadingState,
+  Notice,
+  Section,
+} from "@/components/ui";
 import { PageContainer } from "@/layouts";
 import { useHistoryStore } from "@/stores";
 import { archiveLoadStateLabel, isDocumentNoteworthy } from "@/types";
@@ -21,6 +28,7 @@ import { HistoryList } from "../components/HistoryList";
 import "./HistoryPage.css";
 
 export function HistoryPage() {
+  const navigate = useNavigate();
   const records = useHistoryStore((state) => state.records);
   const filter = useHistoryStore((state) => state.filter);
   const total = useHistoryStore((state) => state.total);
@@ -70,21 +78,35 @@ export function HistoryPage() {
       }
     >
       {documentStatus !== null && isDocumentNoteworthy(documentStatus) ? (
-        <div className="history-page__degraded" role="alert">
-          <AlertTriangle size={18} strokeWidth={1.75} aria-hidden="true" />
-          <div>
-            <p className="history-page__degraded-title">
-              {archiveLoadStateLabel(documentStatus.state)}
-            </p>
-            <p className="history-page__degraded-detail">
-              {documentStatus.detail ??
-                "The history document could not be used as written."}
-              {writable
-                ? " Its contents were set aside so new records can be kept."
-                : " Its contents are untouched; this build will not overwrite a newer document."}
-            </p>
-          </div>
-        </div>
+        <Notice
+          tone="warning"
+          title={archiveLoadStateLabel(documentStatus.state)}
+          detail={`${
+            documentStatus.detail ??
+            "The history document could not be used as written."
+          }${
+            writable
+              ? " Its contents were set aside so new records can be kept."
+              : " Its contents are untouched; this build will not overwrite a newer document."
+          }`}
+        />
+      ) : null}
+
+      {filter === "interrupted" ? (
+        <Notice
+          tone="info"
+          title="Interrupted and recovered transfers"
+          detail="These records come from recovery rather than from a job finishing on its own. Anything still waiting for a decision is on the Recovery page."
+          action={
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => navigate("/recovery")}
+            >
+              Open Recovery
+            </Button>
+          }
+        />
       ) : null}
 
       <HistoryFilters
@@ -105,20 +127,20 @@ export function HistoryPage() {
       ) : null}
 
       {error !== null ? (
-        <div className="history-page__error" role="alert">
-          <p className="history-page__error-title">
-            History could not be loaded
-          </p>
-          <p className="history-page__error-message">
-            {error.message}
-            {error.code === "unavailable"
+        <Notice
+          tone="danger"
+          title="History could not be loaded"
+          detail={`${error.message}${
+            error.code === "unavailable"
               ? " History is stored by the desktop application."
-              : ""}
-          </p>
-          <Button variant="secondary" onClick={() => void load()}>
-            Try again
-          </Button>
-        </div>
+              : ""
+          }`}
+          action={
+            <Button variant="secondary" onClick={() => void load()}>
+              Try again
+            </Button>
+          }
+        />
       ) : null}
 
       {error === null && !loading && records.length === 0 ? (

@@ -4,6 +4,8 @@
  * outside this module are re-exported here.
  * ========================================================================== */
 
+export type { CloseWarning } from "./app";
+export { closeNeedsConfirmation, closeWarningSchema } from "./app";
 export type {
   ArchiveLoadState,
   ArchiveStatus,
@@ -23,12 +25,15 @@ export type {
   DirectoryListing,
   EntryKind,
   EntryMetadata,
+  PathAncestor,
 } from "./filesystem";
 export {
   directoryEntrySchema,
   directoryListingSchema,
   ENTRY_KINDS,
   entryMetadataSchema,
+  pathAncestorSchema,
+  pathAncestorsSchema,
   pickedDirectorySchema,
 } from "./filesystem";
 export type {

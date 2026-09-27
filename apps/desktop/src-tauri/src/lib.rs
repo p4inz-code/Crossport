@@ -51,14 +51,16 @@ impl TransferPublisher for FrontendPublisher {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .plugin(logging::plugin())
         .plugin(tauri_plugin_dialog::init())
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
+            commands::app::exit_app,
             commands::dialog::pick_directory,
             commands::drives::list_drives,
             commands::filesystem::inspect_path,
+            commands::filesystem::list_ancestors,
             commands::filesystem::list_directory,
             commands::history::clear_history,
             commands::history::delete_history_record,
@@ -132,9 +134,28 @@ pub fn run() {
                 }));
             Ok(())
         })
-        .run(tauri::generate_context!())
+        .build(tauri::generate_context!())
         .unwrap_or_else(|error| {
-            eprintln!("failed to run CrossPort application: {error}");
+            eprintln!("failed to start CrossPort application: {error}");
             std::process::exit(1);
         });
+
+    app.run(|handle, event| {
+        // Closing while work is in flight is the user's decision, not an
+        // accident: the close is held and the frontend is asked. Every file is
+        // either committed or still under its temporary name, and the job's
+        // state document survives, so nothing is lost either way.
+        if let tauri::RunEvent::WindowEvent {
+            event: tauri::WindowEvent::CloseRequested { api, .. },
+            ..
+        } = event
+        {
+            if let Some(warning) = commands::app::close_state(handle) {
+                api.prevent_close();
+                if let Err(error) = handle.emit(commands::app::CLOSE_REQUESTED_EVENT, warning) {
+                    log::warn!("a close request could not be published: {error}");
+                }
+            }
+        }
+    });
 }

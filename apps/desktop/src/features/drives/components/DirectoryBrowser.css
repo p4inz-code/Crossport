@@ -30,27 +30,106 @@
   flex-wrap: wrap;
 }
 
-.browser__location {
+.browser__trail {
   display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
   min-width: 0;
 }
 
-.browser__location-label {
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
-  color: var(--color-text-subtle);
+.browser__crumbs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  min-width: 0;
 }
 
-.browser__location-path {
+.browser__crumb {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.browser__crumb-separator {
+  color: var(--color-text-subtle);
+  flex: none;
+}
+
+.browser__crumb-button {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 16rem;
+}
+
+.browser__crumb-button:hover:not(:disabled) {
+  background-color: var(--color-surface-subtle);
+  color: var(--color-text);
+}
+
+.browser__crumb-button:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.browser__crumb-button--current,
+.browser__crumb-button:disabled {
+  color: var(--color-text);
+  font-weight: var(--font-medium);
+  cursor: default;
+}
+
+.browser__crumb-fallback {
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   color: var(--color-text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.browser__source-label {
+  flex: none;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-subtle);
+}
+
+.browser__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.browser__actions-hint {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-subtle);
+  min-width: 0;
+}
+
+.browser__keyboard-hint {
+  color: var(--color-text-subtle);
+}
+
+/* The resting status line: how many of each kind are shown, then how to move
+   around them. The counts keep their own node so they can be read exactly. */
+.browser__summary {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-3);
 }
 
 .browser__alert {

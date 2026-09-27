@@ -11,6 +11,7 @@ import { createHashRouter, RouterProvider } from "react-router-dom";
 import { LoadingState } from "@/components/ui";
 import { AppShell } from "@/layouts";
 import { HomePage } from "./pages/HomePage";
+import { NotFoundPage } from "./pages/NotFoundPage";
 import { AppProviders } from "./providers/AppProviders";
 
 const DrivesPage = lazy(() =>
@@ -55,6 +56,9 @@ const router = createHashRouter([
       { path: "history", element: lazyElement(<HistoryPage />) },
       { path: "recovery", element: lazyElement(<RecoveryPage />) },
       { path: "settings", element: lazyElement(<SettingsPage />) },
+      // A stale hash link or a hand-typed address lands here instead of an
+      // empty frame.
+      { path: "*", element: <NotFoundPage /> },
     ],
   },
 ]);

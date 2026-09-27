@@ -24,6 +24,8 @@ export function notificationForTransfer(snapshot: TransferSnapshot): {
   title: string;
   message: string;
   event: string;
+  /** Where the user can see what the notification is about. */
+  to: string | null;
 } | null {
   if (!isTerminalTransferStatus(snapshot.status)) {
     return null;
@@ -38,6 +40,7 @@ export function notificationForTransfer(snapshot: TransferSnapshot): {
       title: "Transfer cancelled",
       message: `${items} — the destination was left as it was.`,
       event: "cancelled",
+      to: "/history",
     };
   }
 
@@ -48,6 +51,7 @@ export function notificationForTransfer(snapshot: TransferSnapshot): {
         title: verificationStatusLabel(verification.status),
         message: `${items} — ${verification.verdict}.`,
         event: "verification-failed",
+        to: "/transfers",
       };
     }
     return {
@@ -55,6 +59,7 @@ export function notificationForTransfer(snapshot: TransferSnapshot): {
       title: "Transfer failed",
       message: `${items} — ${snapshot.error?.message ?? verification.verdict}.`,
       event: "failed",
+      to: "/transfers",
     };
   }
 
@@ -66,6 +71,7 @@ export function notificationForTransfer(snapshot: TransferSnapshot): {
       title: "Transfer completed with skipped items",
       message: `${items}, ${snapshot.progress.skippedItems} item(s) left alone by the conflict strategy.`,
       event: "completed-with-skips",
+      to: "/history",
     };
   }
 
@@ -74,6 +80,7 @@ export function notificationForTransfer(snapshot: TransferSnapshot): {
     title: "Transfer completed",
     message: `${items} — ${verification.verdict}.`,
     event: "completed",
+    to: "/history",
   };
 }
 
@@ -88,6 +95,7 @@ export function notificationForRecovery(candidates: RecoveryCandidate[]): {
   title: string;
   message: string;
   event: string;
+  to: string | null;
 } | null {
   if (candidates.length === 0) {
     return null;
@@ -109,6 +117,7 @@ export function notificationForRecovery(candidates: RecoveryCandidate[]): {
         : `${candidates.length} transfers were interrupted`,
     message: `The application stopped while they were running. ${detail}`,
     event: "recovery-required",
+    to: "/recovery",
   };
 }
 

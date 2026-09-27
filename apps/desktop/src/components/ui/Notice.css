@@ -1,0 +1,75 @@
+/* ==========================================================================
+ * Notice component styles
+ * One panel, three tones. The tone only changes the accent color and icon; the
+ * layout and type scale stay the same so the page keeps one rhythm.
+ * ========================================================================== */
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface-raised);
+}
+
+.notice__icon {
+  flex: none;
+  margin-top: 0.0625rem;
+}
+
+.notice__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.notice__title {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+}
+
+.notice__detail {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.notice__action {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.notice--info {
+  border-color: var(--color-border-strong);
+}
+
+.notice--info .notice__icon {
+  color: var(--color-primary);
+}
+
+.notice--warning {
+  border-color: var(--color-warning);
+  background-color: var(--color-warning-subtle);
+}
+
+.notice--warning .notice__icon {
+  color: var(--color-warning);
+}
+
+.notice--danger {
+  border-color: var(--color-danger);
+  background-color: var(--color-danger-subtle);
+}
+
+.notice--danger .notice__icon {
+  color: var(--color-danger);
+}

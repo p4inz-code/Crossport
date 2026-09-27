@@ -1,8 +1,8 @@
 /* ==========================================================================
  * Sidebar component
- * Primary navigation rail. Nav items and their icons are defined together
- * here so adding a route can never leave an icon missing. Only implemented
- * pages are listed.
+ * Primary navigation rail. The routes come from the shared navigation table
+ * and the icons from the map below, so a route can never appear in one place
+ * without the other. Only implemented pages are listed.
  * ========================================================================== */
 
 import type { LucideIcon } from "lucide-react";
@@ -16,28 +16,25 @@ import {
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
-import { cn } from "@/lib";
+import { APP_ROUTES, cn } from "@/lib";
 import { useAppStore, useRecoveryStore } from "@/stores";
 import "./Sidebar.css";
 
-interface NavItem {
-  to: string;
-  label: string;
-  icon: LucideIcon;
-  /** Whether the link matches only when the path equals `to` exactly. */
-  end?: boolean;
-  /** Whether the item carries the interrupted-transfer count. */
-  badge?: boolean;
-}
-
-const NAV_ITEMS: NavItem[] = [
-  { to: "/", label: "Home", icon: Home, end: true },
-  { to: "/drives", label: "Drives", icon: HardDrive },
-  { to: "/transfers", label: "Transfers", icon: ArrowRightLeft },
-  { to: "/history", label: "History", icon: History },
-  { to: "/recovery", label: "Recovery", icon: ShieldAlert, badge: true },
-  { to: "/settings", label: "Settings", icon: Settings },
-];
+/**
+ * Icons for the routes the navigation table declares.
+ *
+ * The table owns the paths and labels; this map only says what each one looks
+ * like. A route added to the table without an icon fails to compile, which is
+ * the point.
+ */
+const ICONS: Record<string, LucideIcon> = {
+  "/": Home,
+  "/drives": HardDrive,
+  "/transfers": ArrowRightLeft,
+  "/history": History,
+  "/recovery": ShieldAlert,
+  "/settings": Settings,
+};
 
 export function Sidebar() {
   const appName = useAppStore((state) => state.name);
@@ -54,20 +51,22 @@ export function Sidebar() {
 
       <nav className="sidebar__nav" aria-label="Primary">
         <ul className="sidebar__list">
-          {NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
+          {APP_ROUTES.map((item) => {
+            const Icon = ICONS[item.path] ?? Home;
+            const end = item.path === "/";
             return (
-              <li key={item.to}>
+              <li key={item.path}>
                 <NavLink
-                  to={item.to}
-                  end={item.end}
+                  to={item.path}
+                  end={end}
+                  title={`${item.label} (Ctrl+${item.key})`}
                   className={({ isActive }) =>
                     cn("sidebar__link", isActive && "sidebar__link--active")
                   }
                 >
                   <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
                   <span>{item.label}</span>
-                  {item.badge === true && interrupted > 0 ? (
+                  {item.path === "/recovery" && interrupted > 0 ? (
                     // The visible count is a digit; the status role gives it a
                     // name assistive tech can read and a change to announce.
                     <span
@@ -86,7 +85,10 @@ export function Sidebar() {
       </nav>
 
       <div className="sidebar__footer">
-        <p className="sidebar__hint">Storage browser &amp; transfers</p>
+        <p className="sidebar__hint">
+          Ctrl+1…6 moves between pages. Alt+← and Alt+→ walk the folders you
+          have visited.
+        </p>
       </div>
     </aside>
   );

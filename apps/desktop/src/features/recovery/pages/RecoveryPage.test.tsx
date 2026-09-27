@@ -1,10 +1,11 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { IpcError } from "@/services/ipc";
 import * as service from "@/services/recovery-service";
 import { useRecoveryStore } from "@/stores";
 import { makeRecoveryCandidate } from "@/test/fixtures";
+import { renderPage } from "@/test/render-page";
 import { RecoveryPage } from "./RecoveryPage";
 
 vi.mock("@/services/recovery-service", () => ({
@@ -42,7 +43,7 @@ describe("RecoveryPage", () => {
   it("shows nothing interrupted as a clear state rather than an empty list", async () => {
     mockedList.mockResolvedValue(listing([]));
 
-    render(<RecoveryPage />);
+    renderPage(<RecoveryPage />);
 
     expect(
       await screen.findByText("Nothing needs recovery"),
@@ -52,7 +53,7 @@ describe("RecoveryPage", () => {
   it("describes what was interrupted and what can be done about it", async () => {
     mockedList.mockResolvedValue(listing());
 
-    render(<RecoveryPage />);
+    renderPage(<RecoveryPage />);
 
     expect(
       await screen.findByText(/Interrupted — can be run again/),
@@ -76,7 +77,7 @@ describe("RecoveryPage", () => {
       artifactsRemoved: 1,
     });
 
-    render(<RecoveryPage />);
+    renderPage(<RecoveryPage />);
     fireEvent.click(
       await screen.findByRole("button", { name: /Restart from the beginning/ }),
     );
@@ -96,7 +97,7 @@ describe("RecoveryPage", () => {
       artifactsRemoved: 1,
     });
 
-    render(<RecoveryPage />);
+    renderPage(<RecoveryPage />);
     fireEvent.click(
       await screen.findByRole("button", { name: /Discard partial files/ }),
     );
@@ -117,7 +118,7 @@ describe("RecoveryPage", () => {
       ]),
     );
 
-    render(<RecoveryPage />);
+    renderPage(<RecoveryPage />);
 
     const restart = await screen.findByRole("button", {
       name: /Restart from the beginning/,
@@ -139,7 +140,7 @@ describe("RecoveryPage", () => {
       ]),
     );
 
-    render(<RecoveryPage />);
+    renderPage(<RecoveryPage />);
 
     const confirm = await screen.findByRole("button", {
       name: /Mark as recovered/,
@@ -159,7 +160,7 @@ describe("RecoveryPage", () => {
       new IpcError("recovery_unavailable", "the destination is gone"),
     );
 
-    render(<RecoveryPage />);
+    renderPage(<RecoveryPage />);
     fireEvent.click(
       await screen.findByRole("button", { name: /Restart from the beginning/ }),
     );
@@ -179,7 +180,7 @@ describe("RecoveryPage", () => {
       writable: true,
     });
 
-    render(<RecoveryPage />);
+    renderPage(<RecoveryPage />);
 
     expect(
       await screen.findByText("Unusable and set aside"),
@@ -197,7 +198,7 @@ describe("RecoveryPage", () => {
       writable: false,
     });
 
-    render(<RecoveryPage />);
+    renderPage(<RecoveryPage />);
 
     expect(
       await screen.findByText("Written by a newer version"),
@@ -210,7 +211,7 @@ describe("RecoveryPage", () => {
   it("reports a listing failure with a retry", async () => {
     mockedList.mockRejectedValue(new IpcError("unavailable", "desktop only"));
 
-    render(<RecoveryPage />);
+    renderPage(<RecoveryPage />);
 
     expect(
       await screen.findByText("Interrupted transfers could not be listed"),

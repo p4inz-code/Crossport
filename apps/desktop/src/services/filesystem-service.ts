@@ -10,6 +10,8 @@ import {
   directoryListingSchema,
   type EntryMetadata,
   entryMetadataSchema,
+  type PathAncestor,
+  pathAncestorsSchema,
   pickedDirectorySchema,
 } from "@/types";
 import { invokeTyped, requireDesktopRuntime } from "./ipc";
@@ -38,6 +40,18 @@ export async function inspectPath(path: string): Promise<EntryMetadata> {
 export async function listDirectory(path: string): Promise<DirectoryListing> {
   requireDesktopRuntime("list_directory");
   return invokeTyped("list_directory", directoryListingSchema, { path });
+}
+
+/**
+ * Describes a directory and every directory above it, oldest first.
+ *
+ * This is what a breadcrumb trail is built from. Each step carries the absolute
+ * path Rust resolved, so navigating by breadcrumb asks the backend to list a
+ * path it produced rather than one the frontend assembled.
+ */
+export async function listAncestors(path: string): Promise<PathAncestor[]> {
+  requireDesktopRuntime("list_ancestors");
+  return invokeTyped("list_ancestors", pathAncestorsSchema, { path });
 }
 
 /**

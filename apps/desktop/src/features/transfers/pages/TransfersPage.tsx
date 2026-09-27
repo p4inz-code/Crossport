@@ -9,15 +9,17 @@
  * ========================================================================== */
 
 import { Eraser, RefreshCw } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
-import { Button } from "@/components/ui";
+import { Button, Notice } from "@/components/ui";
 import { PageContainer } from "@/layouts";
-import { useTransferStore } from "@/stores";
+import { useHistoryStore, useRecoveryStore, useTransferStore } from "@/stores";
 import { TransferQueue } from "../components/TransferQueue";
 import { isFinished } from "../presentation";
 import "./TransfersPage.css";
 
 export function TransfersPage() {
+  const navigate = useNavigate();
   const jobs = useTransferStore((state) => state.jobs);
   const status = useTransferStore((state) => state.status);
   const error = useTransferStore((state) => state.error);
@@ -29,6 +31,10 @@ export function TransfersPage() {
   const cancel = useTransferStore((state) => state.cancel);
   const remove = useTransferStore((state) => state.remove);
   const clearFinished = useTransferStore((state) => state.clearFinished);
+
+  // What was interrupted in an earlier run is not part of the live queue, but
+  // it is exactly what this page's user is looking for, so it is stated here.
+  const interrupted = useRecoveryStore((state) => state.candidates.length);
 
   const finishedCount = jobs.filter(isFinished).length;
 
@@ -59,6 +65,25 @@ export function TransfersPage() {
         </>
       }
     >
+      {interrupted > 0 ? (
+        <Notice
+          tone="warning"
+          title={`${interrupted} interrupted transfer${
+            interrupted === 1 ? "" : "s"
+          } need${interrupted === 1 ? "s" : ""} a decision`}
+          detail="These were running when the application last stopped. A transfer that did not prove it finished is never treated as finished, and nothing runs again until you choose."
+          action={
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => navigate("/recovery")}
+            >
+              Review recovery
+            </Button>
+          }
+        />
+      ) : null}
+
       <TransferQueue
         jobs={jobs}
         status={status}
@@ -70,6 +95,13 @@ export function TransfersPage() {
         onCancel={(id) => void cancel(id)}
         onRemove={(id) => void remove(id)}
         onRetry={() => void refresh()}
+        onBrowse={() => navigate("/drives")}
+        onOpenHistory={(id) => {
+          // The record keeps the job's identifier, so the details panel can be
+          // opened on the record the user just asked about.
+          useHistoryStore.getState().select(id);
+          navigate("/history");
+        }}
       />
     </PageContainer>
   );

@@ -4,8 +4,10 @@
  * progress stays on the transfer surface, and this says what happened once the
  * work is over (or that a decision is waiting).
  *
- * Each notification is announced politely and can be dismissed individually;
- * nothing here steals focus or blocks the page.
+ * Each notification is announced politely, can be dismissed individually, and
+ * — when a surface holds what it is about — offers to open that surface, so a
+ * message never leaves the user hunting for the thing it mentions. Nothing
+ * here steals focus or blocks the page.
  * ========================================================================== */
 
 import type { LucideIcon } from "lucide-react";
@@ -16,6 +18,8 @@ import {
   ShieldAlert,
   X,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+
 import { cn } from "@/lib";
 import { useNotificationStore } from "@/stores";
 import type { NotificationKind } from "@/stores/notification-store";
@@ -28,7 +32,15 @@ const ICONS: Record<NotificationKind, LucideIcon> = {
   info: Info,
 };
 
+/** What the action button says for each place a notification can lead. */
+const ACTION_LABELS: Record<string, string> = {
+  "/transfers": "View transfers",
+  "/history": "View history",
+  "/recovery": "Review recovery",
+};
+
 export function NotificationStack() {
+  const navigate = useNavigate();
   const notifications = useNotificationStore((state) => state.notifications);
   const dismiss = useNotificationStore((state) => state.dismiss);
 
@@ -46,6 +58,10 @@ export function NotificationStack() {
     >
       {notifications.map((notification) => {
         const Icon = ICONS[notification.kind];
+        const actionLabel =
+          notification.to === null
+            ? null
+            : (ACTION_LABELS[notification.to] ?? "Open");
         return (
           <div
             key={notification.id}
@@ -61,6 +77,21 @@ export function NotificationStack() {
             <div className="notification__body">
               <p className="notification__title">{notification.title}</p>
               <p className="notification__message">{notification.message}</p>
+              {actionLabel !== null && notification.to !== null ? (
+                <button
+                  type="button"
+                  className="notification__action"
+                  onClick={() => {
+                    const target = notification.to;
+                    dismiss(notification.id);
+                    if (target !== null) {
+                      navigate(target);
+                    }
+                  }}
+                >
+                  {actionLabel}
+                </button>
+              ) : null}
             </div>
             <button
               type="button"

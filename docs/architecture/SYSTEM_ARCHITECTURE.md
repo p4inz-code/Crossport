@@ -78,6 +78,25 @@ classified into explicit outcomes and never restarted automatically. See
 `docs/architecture/TRANSFER_ENGINE.md`, `VERIFICATION.md`, `PERSISTENCE.md`, and
 `RECOVERY.md`.
 
+### Window lifecycle and the close guard
+
+Closing the window is the one desktop behaviour the backend owns. `app.run`
+catches `WindowEvent::CloseRequested`, and when the engine holds live work or
+the archive holds an interrupted job it holds the close (`api.prevent_close()`)
+and emits `app:close-requested` with what would be set aside. The frontend turns
+that into a question; only an explicit confirmation reaches `exit_app`. A close
+with nothing in flight is not intercepted at all, and because state is journaled
+continuously, an accepted close is recoverable rather than a data-loss event.
+
+### Navigation and keyboard
+
+One table (`src/lib/navigation.ts`) declares the routes, their labels, and the
+digit that jumps to each one; the sidebar renders it, the top bar names the
+current section from it, and `useAppShortcuts` navigates by it, so the three
+can never drift apart. Shortcuts that would change what is on disk are
+intentionally absent — starting, cancelling, and clearing are buttons. See
+`docs/design/ACCESSIBILITY.md`.
+
 ### Structured errors
 
 All commands return `AppResult<T>`. Errors serialize to

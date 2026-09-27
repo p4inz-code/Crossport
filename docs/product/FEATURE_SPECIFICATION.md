@@ -1,4 +1,4 @@
-> **Status: roadmap — partly implemented.** This document describes the planned product scope; the repository currently implements Phases 1–4 (settings, platform volumes, filesystem browsing, the transfer engine, post-transfer verification, crash recovery, and transfer history). Version 2 and later candidates are not started.
+> **Status: roadmap — partly implemented.** This document describes the planned product scope; the repository currently implements Phases 1–5 (settings, platform volumes, filesystem browsing with a breadcrumb trail and back/forward/up, the transfer engine, post-transfer verification, crash recovery, transfer history, and the product experience around them: composer, queue, history and recovery surfaces, notifications, keyboard support, and the close guard). Version 2 and later candidates are not started.
 # Feature Specification
 
 Version: 1.0

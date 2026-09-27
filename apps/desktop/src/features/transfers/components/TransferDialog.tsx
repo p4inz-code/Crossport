@@ -14,7 +14,9 @@ import {
   ArrowRight,
   FolderInput,
   HardDrive,
+  ShieldCheck,
 } from "lucide-react";
+import { useEffect, useRef } from "react";
 
 import { Button, LoadingState } from "@/components/ui";
 import { formatBytes } from "@/lib";
@@ -23,7 +25,11 @@ import type {
   TransferPreview,
   TransferRequest,
 } from "@/types";
-import { CONFLICT_STRATEGIES } from "@/types";
+import {
+  CONFLICT_STRATEGIES,
+  DEFAULT_VERIFICATION_POLICY,
+  verificationPolicyLabel,
+} from "@/types";
 import {
   basename,
   CONFLICT_STRATEGY_DESCRIPTIONS,
@@ -45,6 +51,9 @@ interface TransferDialogProps {
   onCancel: () => void;
 }
 
+/** Most sources named before the rest are counted. */
+const NAMED_SOURCES = 4;
+
 export function TransferDialog({
   request,
   preview,
@@ -57,22 +66,57 @@ export function TransferDialog({
   const itemCount = request.sources.length;
   const operation = TRANSFER_OPERATION_LABELS[request.operation];
   const title = `${operation} ${itemCount} ${itemCount === 1 ? "item" : "items"}`;
+  const policy = request.verification ?? DEFAULT_VERIFICATION_POLICY;
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+
+  // A dialog takes focus when it opens and gives it back when it closes, so the
+  // keyboard stays where the user left it. Escape cancels, which is the only
+  // safe interpretation of a dismissed composer: nothing was queued yet.
+  useEffect(() => {
+    const previous = document.activeElement;
+    cancelRef.current?.focus();
+    return () => {
+      if (previous instanceof HTMLElement) {
+        previous.focus();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent): void {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onCancel();
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onCancel]);
+
+  const namedSources = request.sources.slice(0, NAMED_SOURCES);
+  const extraSources = request.sources.length - namedSources.length;
 
   return (
     <div className="transfer-dialog__overlay">
       <div
+        ref={dialogRef}
         className="transfer-dialog"
         role="dialog"
         aria-modal="true"
         aria-label={`${title} to ${basename(request.destination)}`}
+        aria-describedby="transfer-dialog-summary"
       >
         <header className="transfer-dialog__header">
           <h2 className="transfer-dialog__title">{title}</h2>
           <p
             className="transfer-dialog__destination"
+            id="transfer-dialog-summary"
             title={request.destination}
           >
-            into {request.destination}
+            {/* The title already names the operation; the description names
+                where it lands, which is what the dialog is asking about. */}
+            {`Into ${request.destination}`}
           </p>
         </header>
 
@@ -81,6 +125,45 @@ export function TransferDialog({
         ) : (
           <div className="transfer-dialog__body">
             <dl className="transfer-dialog__facts">
+              {/* Only shown when the backend reported no per-root mapping: the
+                  mapping below already names every source, and repeating it
+                  here would say the same thing twice. */}
+              {preview.roots.length === 0 ? (
+                <div className="transfer-dialog__fact">
+                  <dt>From</dt>
+                  <dd>
+                    <span className="transfer-dialog__sources">
+                      {namedSources.map((source) => (
+                        <span
+                          key={source}
+                          className="transfer-dialog__source"
+                          title={source}
+                        >
+                          {source}
+                        </span>
+                      ))}
+                      {extraSources > 0 ? (
+                        <span className="transfer-dialog__source">
+                          +{extraSources} more
+                        </span>
+                      ) : null}
+                    </span>
+                  </dd>
+                </div>
+              ) : null}
+              <div className="transfer-dialog__fact">
+                <dt>Verification</dt>
+                <dd>
+                  <span className="transfer-dialog__verification">
+                    <ShieldCheck
+                      size={14}
+                      strokeWidth={1.75}
+                      aria-hidden="true"
+                    />
+                    {verificationPolicyLabel(policy)}
+                  </span>
+                </dd>
+              </div>
               <div className="transfer-dialog__fact">
                 <dt>Data</dt>
                 <dd>{formatBytes(preview.totalBytes)}</dd>
@@ -181,6 +264,13 @@ export function TransferDialog({
               </p>
             ) : null}
 
+            <p className="transfer-dialog__note transfer-dialog__note--calm">
+              <ShieldCheck size={15} strokeWidth={1.75} aria-hidden="true" />
+              {policy === "none"
+                ? "Nothing will be checked after each file is written. Change this in Settings before starting if that is not what you want."
+                : "Each copied file is checked before the job reports it as done. Change the policy in Settings; this job keeps the one shown here."}
+            </p>
+
             {request.operation === "move" ? (
               <p className="transfer-dialog__note transfer-dialog__note--calm">
                 <HardDrive size={15} strokeWidth={1.75} aria-hidden="true" />
@@ -200,7 +290,13 @@ export function TransferDialog({
         ) : null}
 
         <footer className="transfer-dialog__actions">
-          <Button variant="secondary" onClick={onCancel} disabled={busy}>
+          <Button
+            ref={cancelRef}
+            variant="secondary"
+            onClick={onCancel}
+            disabled={busy}
+            title="Cancel (Escape)"
+          >
             Cancel
           </Button>
           <Button onClick={onConfirm} disabled={busy || preview === null}>

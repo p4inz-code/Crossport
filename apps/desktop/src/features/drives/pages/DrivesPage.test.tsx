@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import * as drivesService from "@/services/drives-service";
@@ -13,11 +13,14 @@ import {
   makeTransferSnapshot,
   makeVolume,
 } from "@/test/fixtures";
+import { renderPage } from "@/test/render-page";
 import type { DirectoryListing } from "@/types";
+import { DEFAULT_VERIFICATION_POLICY } from "@/types";
 import { DrivesPage } from "./DrivesPage";
 
 vi.mock("@/services/drives-service", () => ({ listDrives: vi.fn() }));
 vi.mock("@/services/filesystem-service", () => ({
+  listAncestors: vi.fn(),
   listDirectory: vi.fn(),
   pickDirectory: vi.fn(),
 }));
@@ -35,6 +38,7 @@ vi.mock("@/services/transfer-service", () => ({
 }));
 
 const mockedListDrives = vi.mocked(drivesService.listDrives);
+const mockedListAncestors = vi.mocked(filesystemService.listAncestors);
 const mockedListDirectory = vi.mocked(filesystemService.listDirectory);
 const mockedPickDirectory = vi.mocked(filesystemService.pickDirectory);
 const mockedPlanTransfer = vi.mocked(transferService.planTransfer);
@@ -97,12 +101,17 @@ describe("DrivesPage", () => {
       dismissed: [],
     });
     mockedPickDirectory.mockResolvedValue(null);
+    // The trail is the backend's answer; a single step keeps a page-level test
+    // from asserting a frontend-assembled path by accident.
+    mockedListAncestors.mockImplementation(async (path: string) => [
+      { path, label: path },
+    ]);
   });
 
   it("lists the volumes the backend detected with their metadata", async () => {
     mockedListDrives.mockResolvedValue([SYSTEM, MEDIA]);
 
-    render(<DrivesPage />);
+    renderPage(<DrivesPage />);
 
     expect(await screen.findByText("Windows")).toBeInTheDocument();
     expect(screen.getByText("C:\\")).toBeInTheDocument();
@@ -120,7 +129,7 @@ describe("DrivesPage", () => {
     mockedListDrives.mockResolvedValue([SYSTEM, MEDIA]);
     mockedListDirectory.mockResolvedValue(MEDIA_ROOT);
 
-    render(<DrivesPage />);
+    renderPage(<DrivesPage />);
     fireEvent.click(await screen.findByRole("button", { name: /MEDIA/ }));
 
     expect(
@@ -130,6 +139,7 @@ describe("DrivesPage", () => {
       screen.getByRole("rowheader", { name: /readme.txt/ }),
     ).toBeInTheDocument();
     expect(mockedListDirectory).toHaveBeenCalledWith("D:\\");
+    expect(mockedListAncestors).toHaveBeenCalledWith("D:\\");
     expect(screen.getByText("2 KB")).toBeInTheDocument();
     expect(screen.getByText("1 folder · 1 file")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Back" })).toBeDisabled();
@@ -143,7 +153,7 @@ describe("DrivesPage", () => {
     mockedListDirectory.mockResolvedValueOnce(MEDIA_ROOT);
     mockedListDirectory.mockResolvedValueOnce(PHOTOS);
 
-    render(<DrivesPage />);
+    renderPage(<DrivesPage />);
     fireEvent.click(await screen.findByRole("button", { name: /MEDIA/ }));
 
     fireEvent.click(await screen.findByRole("button", { name: /Photos/ }));
@@ -172,7 +182,7 @@ describe("DrivesPage", () => {
     mockedListDrives.mockResolvedValue([SYSTEM, MEDIA]);
     mockedListDirectory.mockResolvedValue(MEDIA_ROOT);
 
-    render(<DrivesPage />);
+    renderPage(<DrivesPage />);
     fireEvent.click(await screen.findByRole("button", { name: /MEDIA/ }));
     await screen.findByRole("rowheader", { name: /Photos/ });
     expect(mockedListDirectory).toHaveBeenCalledTimes(1);
@@ -205,7 +215,7 @@ describe("DrivesPage", () => {
       new IpcError("path_not_found", "path not found: E:\\"),
     );
 
-    render(<DrivesPage />);
+    renderPage(<DrivesPage />);
     expect(await screen.findByText("Not available")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /E:/ }));
 
@@ -225,7 +235,7 @@ describe("DrivesPage", () => {
     );
     mockedListDirectory.mockResolvedValueOnce(MEDIA_ROOT);
 
-    render(<DrivesPage />);
+    renderPage(<DrivesPage />);
     fireEvent.click(await screen.findByRole("button", { name: /MEDIA/ }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
@@ -248,7 +258,7 @@ describe("DrivesPage", () => {
       }),
     );
 
-    render(<DrivesPage />);
+    renderPage(<DrivesPage />);
     fireEvent.click(await screen.findByRole("button", { name: /MEDIA/ }));
 
     expect(await screen.findByRole("status")).toHaveTextContent(
@@ -268,7 +278,7 @@ describe("DrivesPage", () => {
       makeListing({ path: "D:\\Project", name: "Project" }),
     );
 
-    render(<DrivesPage />);
+    renderPage(<DrivesPage />);
     fireEvent.click(
       await screen.findByRole("button", { name: "Open folder…" }),
     );
@@ -283,7 +293,7 @@ describe("DrivesPage", () => {
     mockedListDrives.mockResolvedValue([SYSTEM]);
     mockedPickDirectory.mockResolvedValue(null);
 
-    render(<DrivesPage />);
+    renderPage(<DrivesPage />);
     fireEvent.click(
       await screen.findByRole("button", { name: "Open folder…" }),
     );
@@ -305,7 +315,7 @@ describe("DrivesPage", () => {
       ),
     );
 
-    render(<DrivesPage />);
+    renderPage(<DrivesPage />);
     fireEvent.click(
       await screen.findByRole("button", { name: "Open folder…" }),
     );
@@ -319,7 +329,7 @@ describe("DrivesPage", () => {
   it("explains an empty volume list", async () => {
     mockedListDrives.mockResolvedValue([]);
 
-    render(<DrivesPage />);
+    renderPage(<DrivesPage />);
 
     expect(await screen.findByText("No volumes detected")).toBeInTheDocument();
   });
@@ -329,7 +339,7 @@ describe("DrivesPage", () => {
       new IpcError("permission_denied", "permission denied: volume is locked"),
     );
 
-    render(<DrivesPage />);
+    renderPage(<DrivesPage />);
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "permission denied: volume is locked",
@@ -344,7 +354,7 @@ describe("DrivesPage", () => {
   it("refreshes the volume list from the page header", async () => {
     mockedListDrives.mockResolvedValue([SYSTEM]);
 
-    render(<DrivesPage />);
+    renderPage(<DrivesPage />);
     await screen.findByText("Windows");
 
     mockedListDrives.mockResolvedValue([SYSTEM, MEDIA]);
@@ -369,11 +379,14 @@ describe("DrivesPage transfer composition", () => {
     });
     mockedListDrives.mockResolvedValue([MEDIA]);
     mockedListDirectory.mockResolvedValue(MEDIA_ROOT);
+    mockedListAncestors.mockImplementation(async (path: string) => [
+      { path, label: path },
+    ]);
   });
 
   /** Opens D:\ and checks the Photos folder. */
   async function checkPhotos(): Promise<void> {
-    render(<DrivesPage />);
+    renderPage(<DrivesPage />);
     fireEvent.click(await screen.findByRole("button", { name: /MEDIA/ }));
     fireEvent.click(
       await screen.findByRole("checkbox", { name: "Select Photos" }),
@@ -393,6 +406,9 @@ describe("DrivesPage transfer composition", () => {
         destination: "D:\\Backup",
         operation: "copy",
         conflict: "skip",
+        // The composer folds the configured policy into the request, so a
+        // later settings change cannot alter a job that was already reviewed.
+        verification: DEFAULT_VERIFICATION_POLICY,
       });
     });
 
@@ -436,6 +452,7 @@ describe("DrivesPage transfer composition", () => {
       destination: "D:\\Backup",
       operation: "copy",
       conflict: "rename",
+      verification: DEFAULT_VERIFICATION_POLICY,
     });
     expect(screen.getByRole("radio", { name: /Keep both/ })).toBeChecked();
   });
@@ -460,11 +477,19 @@ describe("DrivesPage transfer composition", () => {
       destination: "D:\\Backup",
       operation: "copy",
       conflict: "skip",
+      verification: DEFAULT_VERIFICATION_POLICY,
     });
     expect(useTransferStore.getState().jobs.map((job) => job.id)).toEqual([
       snapshot.id,
     ]);
-    expect(screen.getByText(/1 item queued for copy/)).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "1 item queued for copy",
+    );
+    // The confirmation says where to follow it instead of leaving the user to
+    // find the queue themselves.
+    expect(
+      screen.getByRole("link", { name: "Open the queue" }),
+    ).toHaveAttribute("href", "/transfers");
   });
 
   it("explains a refused request instead of opening a dialog", async () => {

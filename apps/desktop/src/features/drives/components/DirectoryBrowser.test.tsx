@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -24,15 +24,18 @@ function renderBrowser(
   return render(
     <DirectoryBrowser
       location={null}
+      trail={[]}
       listing={null}
       status="idle"
       error={null}
       canGoBack={false}
+      canGoForward={false}
       canGoUp={false}
       pickerBusy={false}
       transferBusy={false}
       alert={null}
       onBack={vi.fn()}
+      onForward={vi.fn()}
       onUp={vi.fn()}
       onRefresh={vi.fn()}
       onOpen={vi.fn()}
@@ -50,6 +53,8 @@ describe("DirectoryBrowser", () => {
 
     expect(screen.getByText("No folder open")).toBeInTheDocument();
     expect(screen.getByText("No folder selected")).toBeInTheDocument();
+    // Nothing is loaded, so no navigation is offered.
+    expect(screen.getByRole("button", { name: "Refresh" })).toBeDisabled();
   });
 
   it("shows the location and the entries of the listed folder", () => {
@@ -115,8 +120,11 @@ describe("DirectoryBrowser", () => {
     });
 
     expect(screen.getByText("This folder is empty")).toBeInTheDocument();
-    // The toolbar and the empty state both name the folder.
-    expect(screen.getAllByText("C:\\Empty")).toHaveLength(2);
+    // The current folder is named by the trail and by the empty state.
+    expect(screen.getByText("C:\\Empty")).toBeInTheDocument();
+    expect(
+      screen.getByText("Nothing to show in C:\\Empty."),
+    ).toBeInTheDocument();
     expect(screen.getByText("0 folders · 0 files")).toBeInTheDocument();
   });
 
@@ -202,46 +210,105 @@ describe("DirectoryBrowser", () => {
 
   it("only offers navigation the backend supports", () => {
     const onBack = vi.fn();
+    const onForward = vi.fn();
     const onUp = vi.fn();
     renderBrowser({
       location: "C:\\",
       listing: LISTING,
       status: "ready",
       canGoBack: false,
+      canGoForward: false,
       canGoUp: false,
       onBack,
+      onForward,
       onUp,
     });
 
     const back = screen.getByRole("button", { name: "Back" });
+    const forward = screen.getByRole("button", { name: "Forward" });
     const up = screen.getByRole("button", { name: "Up" });
     expect(back).toBeDisabled();
+    expect(forward).toBeDisabled();
     expect(up).toBeDisabled();
 
     fireEvent.click(back);
+    fireEvent.click(forward);
     fireEvent.click(up);
     expect(onBack).not.toHaveBeenCalled();
+    expect(onForward).not.toHaveBeenCalled();
     expect(onUp).not.toHaveBeenCalled();
   });
 
-  it("supports back and up with the keyboard shortcuts", () => {
+  it("shows the path as a trail of ancestors the backend produced", () => {
+    const onOpen = vi.fn();
+    renderBrowser({
+      location: "C:\\Users\\Ada",
+      trail: [
+        { path: "C:\\", label: "C:" },
+        { path: "C:\\Users", label: "Users" },
+        { path: "C:\\Users\\Ada", label: "Ada" },
+      ],
+      listing: makeListing({ path: "C:\\Users\\Ada", parent: "C:\\Users" }),
+      status: "ready",
+      onOpen,
+    });
+
+    const crumbs = within(
+      screen.getByRole("navigation", { name: "Breadcrumb" }),
+    ).getAllByRole("button");
+    expect(crumbs.map((crumb) => crumb.textContent)).toEqual([
+      "C:",
+      "Users",
+      "Ada",
+    ]);
+
+    // The folder being shown is the current step, not a link to itself.
+    expect(crumbs[2]).toHaveAttribute("aria-current", "page");
+    expect(crumbs[2]).toBeDisabled();
+    expect(crumbs[1]).toHaveAttribute("title", "C:\\Users");
+
+    fireEvent.click(crumbs[1] as HTMLElement);
+    expect(onOpen).toHaveBeenCalledWith("C:\\Users");
+  });
+
+  it("falls back to the raw location when no trail was produced", () => {
+    renderBrowser({
+      location: "C:\\Users",
+      trail: [],
+      listing: makeListing({ path: "C:\\Users", parent: "C:\\" }),
+      status: "ready",
+    });
+
+    expect(
+      within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByText(
+        "C:\\Users",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("supports back, forward, and up with the keyboard shortcuts", () => {
     const onBack = vi.fn();
+    const onForward = vi.fn();
     const onUp = vi.fn();
     renderBrowser({
       location: "C:\\Users",
       listing: makeListing({ path: "C:\\Users", parent: "C:\\" }),
       status: "ready",
       canGoBack: true,
+      canGoForward: true,
       canGoUp: true,
       onBack,
+      onForward,
       onUp,
     });
 
     const browser = screen.getByRole("region", { name: "Directory browser" });
     fireEvent.keyDown(browser, { key: "ArrowLeft", altKey: true });
+    fireEvent.keyDown(browser, { key: "ArrowRight", altKey: true });
     fireEvent.keyDown(browser, { key: "ArrowUp", altKey: true });
 
     expect(onBack).toHaveBeenCalledTimes(1);
+    expect(onForward).toHaveBeenCalledTimes(1);
     expect(onUp).toHaveBeenCalledTimes(1);
   });
 
