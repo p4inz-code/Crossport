@@ -1,6 +1,6 @@
 # CrossPort System Architecture
 
-Version: 3.0
+Version: 4.0
 Status: Approved
 
 ## Purpose
@@ -23,9 +23,11 @@ React UI (features, layouts, components)
         ↓  stores (Zustand)
         ↓  services (typed IPC / validated storage)
         ↓  [IPC: structured JSON commands]
-Rust command layer (settings, system, drives, filesystem, dialog)
+Rust command layer (settings, system, drives, filesystem, dialog, transfer,
+history, recovery)
         ↓
-Rust domain modules (settings, platform volumes, filesystem)
+Rust domain modules (settings, platform volumes, filesystem, transfer engine,
+verification, archive → durable documents)
         ↓
 Operating system
 ```
@@ -62,6 +64,19 @@ reported but not followed, and the listing is capped so a huge folder cannot
 exhaust memory. Volume probing and every filesystem command run on the blocking
 pool, so the event loop stays responsive while the OS walks a directory or
 queries a slow volume.
+
+### Transfers, verification, and durability
+
+The transfer engine is a plain Rust module that publishes progress through a
+publisher port and what happened through a journal port; it never depends on the
+Tauri windowing layer and never reads or writes a durable file itself. The
+archive (`archive.rs`) is the only module that knows both the live engine and
+the durable side, and every document it writes goes through one atomic,
+versioned document layer. A transfer verifies what it wrote (size by default,
+SHA-256 on request) and reports what it did not check. Interrupted work is
+classified into explicit outcomes and never restarted automatically. See
+`docs/architecture/TRANSFER_ENGINE.md`, `VERIFICATION.md`, `PERSISTENCE.md`, and
+`RECOVERY.md`.
 
 ### Structured errors
 

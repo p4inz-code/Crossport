@@ -1,4 +1,4 @@
-> **Status: roadmap — mostly not yet implemented.** This document describes the planned product journeys; the repository currently implements Phase 2 (settings, volume metadata, and filesystem browsing, no transfers yet).
+> **Status: roadmap — partly implemented.** This document describes the planned product journeys; the repository currently implements Phases 1–4 (settings, volume metadata, filesystem browsing, transfers, verification, recovery, and history). Journeys that depend on Version 2+ work are not started.
 # CrossPort User Journeys
 
 Version: 1.0

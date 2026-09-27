@@ -7,6 +7,7 @@ import {
   makeTransferIssue,
   makeTransferProgress,
   makeTransferSnapshot,
+  makeVerificationSummary,
 } from "@/test/fixtures";
 import type { TransferSnapshot } from "@/types";
 import { TransferQueue } from "./TransferQueue";
@@ -298,5 +299,61 @@ describe("TransferQueue", () => {
 
     expect(screen.getByRole("alert")).toHaveTextContent("the queue is busy");
     expect(screen.getByText("Photos")).toBeInTheDocument();
+  });
+
+  it("says a job is checking its output instead of transferring", () => {
+    const job = makeTransferSnapshot({
+      progress: makeTransferProgress({ activity: "verifying" }),
+      verification: makeVerificationSummary({
+        status: "verifying",
+        checkedFiles: 1,
+        verifiedFiles: 1,
+        verdict: "verification is in progress",
+      }),
+    });
+
+    renderQueue({ jobs: [job], status: "ready" });
+
+    expect(screen.getByText("Verifying")).toBeInTheDocument();
+    expect(screen.queryByText("Transferring")).toBeNull();
+    // The file being checked is named, and its byte counts are not pretended.
+    expect(screen.getByText("Checking what was written")).toBeInTheDocument();
+    expect(
+      screen.getByText("D:\\Backup\\Photos\\trip.jpg"),
+    ).toBeInTheDocument();
+  });
+
+  it("reports a finished job's verdict and what was not preserved", () => {
+    const job = makeTransferSnapshot({
+      status: "completed",
+      verification: makeVerificationSummary({
+        status: "verified",
+        checkedFiles: 2,
+        verifiedFiles: 2,
+        unverifiedFiles: 0,
+        verifiedBytes: 4096,
+        verdict: "verified (size, 2 files, 4096 bytes)",
+      }),
+    });
+
+    renderQueue({ jobs: [job], status: "ready" });
+
+    expect(
+      screen.getByText(
+        "Size verification — verified (size, 2 files, 4096 bytes)",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Modified times and read-only attributes are not reapplied.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("claims no verdict for a job whose verification has not started", () => {
+    renderQueue({ jobs: [RUNNING], status: "ready" });
+
+    expect(screen.queryByText(/verification has not started/)).toBeNull();
+    expect(screen.queryByText(/not reapplied/)).toBeNull();
   });
 });

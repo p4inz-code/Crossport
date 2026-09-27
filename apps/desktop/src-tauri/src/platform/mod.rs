@@ -139,6 +139,47 @@ fn memory_usage_bytes_platform() -> Option<u64> {
     None
 }
 
+/// Private bytes this process has committed, when the host reports it.
+///
+/// This is the figure that answers "did this code buffer the data it copied?"
+/// honestly: a working set also counts file-cache pages that the operating
+/// system maps into the process while it reads a large file, which has nothing
+/// to do with what the application allocated. Commit charge counts only memory
+/// the process itself holds, so a streaming copy stays flat while a buffering
+/// one grows by the size of the file.
+///
+/// Compiled only for tests, like [`memory_usage_bytes`].
+#[cfg(test)]
+pub fn private_memory_bytes() -> Option<u64> {
+    private_memory_bytes_platform()
+}
+
+/// Windows: `PagefileUsage` from the same counters struct as the working set.
+#[cfg(all(test, windows))]
+fn private_memory_bytes_platform() -> Option<u64> {
+    use windows_sys::Win32::System::ProcessStatus::{
+        K32GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS,
+    };
+    use windows_sys::Win32::System::Threading::GetCurrentProcess;
+
+    // SAFETY: as above: zero-initialized counters with the size field the API
+    // requires, and the current-process pseudo handle, which is always valid.
+    unsafe {
+        let mut counters: PROCESS_MEMORY_COUNTERS = std::mem::zeroed();
+        counters.cb = std::mem::size_of::<PROCESS_MEMORY_COUNTERS>() as u32;
+        let succeeded = K32GetProcessMemoryInfo(GetCurrentProcess(), &mut counters, counters.cb);
+        if succeeded == 0 {
+            return None;
+        }
+        Some(counters.PagefileUsage as u64)
+    }
+}
+
+#[cfg(all(test, not(windows)))]
+fn private_memory_bytes_platform() -> Option<u64> {
+    None
+}
+
 /// Runtime facts about the host. Surfaced to the frontend over IPC so the UI
 /// never has to guess at the environment it is rendered in.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -254,6 +295,21 @@ mod tests {
             assert!(
                 bytes >= 1024 * 1024,
                 "a process running tests holds more than a megabyte: {bytes}"
+            );
+        }
+    }
+
+    #[test]
+    fn reports_a_plausible_private_memory_figure() {
+        if let Some(bytes) = private_memory_bytes() {
+            assert!(bytes > 0, "a running process has committed some memory");
+            assert!(
+                bytes < 1024u64 * 1024 * 1024 * 1024,
+                "private bytes below a terabyte is the honest range: {bytes}"
+            );
+            assert!(
+                bytes <= memory_usage_bytes().unwrap_or(u64::MAX),
+                "private bytes cannot exceed the working set: {bytes}"
             );
         }
     }

@@ -8,11 +8,14 @@ import type {
   DirectoryEntry,
   DirectoryListing,
   DriveInfo,
+  HistoryRecord,
+  RecoveryCandidate,
   TransferIssue,
   TransferPreview,
   TransferPreviewRoot,
   TransferProgress,
   TransferSnapshot,
+  VerificationSummary,
 } from "@/types";
 
 const GIB = 1024 ** 3;
@@ -72,6 +75,40 @@ export function makeTransferProgress(
     averageBytesPerSecond: 1024,
     etaSeconds: 3,
     elapsedMs: 1000,
+    activity: "transferring",
+    ...overrides,
+  };
+}
+
+/** A verification summary; override whatever a test cares about. */
+export function makeVerificationSummary(
+  overrides: Partial<VerificationSummary> = {},
+): VerificationSummary {
+  return {
+    status: "pending",
+    policy: "size",
+    method: "size",
+    checksumAlgorithm: null,
+    plannedFiles: 2,
+    checkedFiles: 0,
+    verifiedFiles: 0,
+    mismatchedFiles: 0,
+    failedFiles: 0,
+    skippedFiles: 0,
+    unverifiedFiles: 2,
+    verifiedBytes: 0,
+    durationMs: 0,
+    coverage: {
+      size: true,
+      structure: true,
+      checksum: false,
+      modifiedTimePreserved: false,
+      readonlyPreserved: false,
+    },
+    mismatches: [],
+    mismatchesTruncated: false,
+    error: null,
+    verdict: "verification has not started",
     ...overrides,
   };
 }
@@ -101,6 +138,7 @@ export function makeTransferSnapshot(
     sources: ["D:\\Photos"],
     destination: "D:\\Backup",
     progress: makeTransferProgress(),
+    verification: makeVerificationSummary(),
     error: null,
     issues: [],
     issuesTruncated: false,
@@ -145,6 +183,105 @@ export function makeTransferPreview(
     availableBytes: 8 * GIB,
     sameVolume: true,
     roots: [makeTransferPreviewRoot()],
+    ...overrides,
+  };
+}
+
+/** One history record; override whatever a test cares about. */
+export function makeHistoryRecord(
+  overrides: Partial<HistoryRecord> = {},
+): HistoryRecord {
+  return {
+    id: "transfer-1700000000000-1",
+    operation: "copy",
+    conflict: "skip",
+    status: "completed",
+    sources: ["D:\\Photos"],
+    destination: "D:\\Backup",
+    totalBytes: 4096,
+    transferredBytes: 4096,
+    totalFiles: 2,
+    completedFiles: 2,
+    totalDirectories: 1,
+    completedDirectories: 1,
+    skippedItems: 0,
+    failedItems: 0,
+    queuedAtMs: 1_700_000_000_000,
+    startedAtMs: 1_700_000_000_100,
+    finishedAtMs: 1_700_000_002_000,
+    durationMs: 1900,
+    error: null,
+    issuesTruncated: false,
+    issues: [],
+    verification: {
+      status: "verified",
+      method: "size",
+      policy: "size",
+      checksumAlgorithm: null,
+      checkedFiles: 2,
+      verifiedFiles: 2,
+      mismatchedFiles: 0,
+      failedFiles: 0,
+      verifiedBytes: 4096,
+      verdict: "verified (size, 2 files, 4096 bytes)",
+    },
+    recovery: null,
+    recoveredFrom: null,
+    ...overrides,
+  };
+}
+
+/** One interrupted transfer recovery reported; override what matters. */
+export function makeRecoveryCandidate(
+  overrides: Partial<RecoveryCandidate> = {},
+): RecoveryCandidate {
+  return {
+    id: "transfer-1700000000000-2",
+    operation: "copy",
+    conflict: "skip",
+    verification: "size",
+    sources: ["D:\\Photos"],
+    destination: "D:\\Backup",
+    status: "running",
+    queuedAtMs: 1_700_000_000_000,
+    startedAtMs: 1_700_000_000_100,
+    updatedAtMs: 1_700_000_000_900,
+    progress: {
+      totalBytes: 4096,
+      transferredBytes: 1024,
+      totalFiles: 2,
+      completedFiles: 1,
+      totalDirectories: 1,
+      completedDirectories: 1,
+      skippedItems: 0,
+      failedItems: 0,
+    },
+    percent: 25,
+    verificationSummary: null,
+    outcome: "restart_required",
+    detail:
+      "The transfer stopped after reporting 1024 of 4096 bytes. Restarting starts every file from the beginning.",
+    artifacts: [
+      {
+        path: "D:\\Backup\\.crossport-transfer-1700000000000-2-0.partial",
+        bytes: 1024,
+      },
+    ],
+    artifactBytes: 1024,
+    artifactsTruncated: false,
+    artifactDirectories: ["D:\\Backup"],
+    restartImpact: {
+      strategy: "skip",
+      conflicts: 0,
+      skippedItems: 0,
+      totalBytes: 4096,
+      totalFiles: 2,
+      overwrites: false,
+    },
+    destinationLooksComplete: null,
+    confirmedByArchive: false,
+    canRestart: true,
+    canDiscard: true,
     ...overrides,
   };
 }

@@ -18,6 +18,8 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
+use crate::verification::{VerificationPolicy, VerificationSummary};
+
 use crate::errors::AppError;
 
 /// What a transfer does with each source.
@@ -136,6 +138,35 @@ pub struct TransferRequest {
     pub operation: TransferOperation,
     #[serde(default)]
     pub conflict: ConflictStrategy,
+    /// How thoroughly to verify what is written. `None` means the application's
+    /// configured policy applies, so a client that does not care still gets the
+    /// safe default instead of accidentally opting out of verification.
+    #[serde(default)]
+    pub verification: Option<VerificationPolicy>,
+}
+
+impl TransferRequest {
+    /// Fills in the application's configured policy when the request did not
+    /// name one.
+    ///
+    /// Called once at the command boundary, before planning, so that by the
+    /// time a request is planned, queued, or persisted it is a complete record
+    /// of what was asked for — and a later settings change cannot alter a job
+    /// that is already in the queue.
+    pub fn resolve_verification(mut self, default: VerificationPolicy) -> Self {
+        if self.verification.is_none() {
+            self.verification = Some(default);
+        }
+        self
+    }
+
+    /// The policy this request runs under.
+    ///
+    /// An unresolved request falls back to the safe default rather than to no
+    /// verification at all.
+    pub fn verification_policy(&self) -> VerificationPolicy {
+        self.verification.unwrap_or_default()
+    }
 }
 
 /// What a planned item is.
@@ -221,6 +252,10 @@ pub struct TransferPlan {
     pub destination: PathBuf,
     pub operation: TransferOperation,
     pub conflict: ConflictStrategy,
+    /// The policy every file in this job is verified against. Resolved when the
+    /// plan is made, so a settings change mid-transfer cannot alter what a
+    /// queued job promised.
+    pub verification: VerificationPolicy,
     pub roots: Vec<PlanRoot>,
     /// Every directory and file to create, parents before children.
     pub items: Vec<TransferItem>,
@@ -250,7 +285,7 @@ impl TransferPlan {
 }
 
 /// Why an issue was recorded. Only [`TransferIssueReason::Failed`] fails a job.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum TransferIssueReason {
     /// The item could not be transferred.
@@ -343,6 +378,29 @@ pub struct TransferTiming {
     pub eta_seconds: Option<u64>,
 }
 
+/// What the running job is doing with the file it is on.
+///
+/// Verification happens inside the item's own completion, so a job's bytes can
+/// be fully counted while a file is still being checked. The job status stays
+/// `running` throughout — this is what lets the surface say *what* is running
+/// instead of showing a finished-looking bar over unfinished verification.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TransferActivity {
+    #[default]
+    Transferring,
+    Verifying,
+}
+
+impl TransferActivity {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Transferring => "transferring",
+            Self::Verifying => "verifying",
+        }
+    }
+}
+
 /// Progress as the UI receives it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -365,13 +423,19 @@ pub struct TransferProgress {
     pub average_bytes_per_second: u64,
     pub eta_seconds: Option<u64>,
     pub elapsed_ms: u64,
+    /// Whether the job is currently moving bytes or checking them.
+    pub activity: TransferActivity,
 }
 
 impl TransferCounters {
     /// Derives the displayable progress. Percent comes from bytes when the plan
     /// has bytes to move, and from item counts otherwise (an empty-directory
     /// transfer still deserves a real progress bar).
-    pub fn to_progress(&self, timing: TransferTiming) -> TransferProgress {
+    pub fn to_progress(
+        &self,
+        timing: TransferTiming,
+        activity: TransferActivity,
+    ) -> TransferProgress {
         TransferProgress {
             total_bytes: self.total_bytes,
             transferred_bytes: self.transferred_bytes,
@@ -390,6 +454,7 @@ impl TransferCounters {
             average_bytes_per_second: timing.average_bytes_per_second,
             eta_seconds: timing.eta_seconds,
             elapsed_ms: timing.elapsed_ms,
+            activity,
         }
     }
 }
@@ -450,6 +515,9 @@ pub struct TransferSnapshot {
     pub sources: Vec<String>,
     pub destination: String,
     pub progress: TransferProgress,
+    /// The job's verification verdict, updated as files are checked. A job
+    /// never reports `completed` while this is short of proven.
+    pub verification: VerificationSummary,
     /// Job-level failure. Per-item failures live in `issues`.
     pub error: Option<AppError>,
     pub issues: Vec<TransferIssue>,
@@ -742,12 +810,15 @@ mod tests {
             current_file_bytes: 250,
             current_file_total_bytes: 400,
         }
-        .to_progress(TransferTiming {
-            elapsed_ms: 500,
-            bytes_per_second: 500,
-            average_bytes_per_second: 400,
-            eta_seconds: Some(2),
-        });
+        .to_progress(
+            TransferTiming {
+                elapsed_ms: 500,
+                bytes_per_second: 500,
+                average_bytes_per_second: 400,
+                eta_seconds: Some(2),
+            },
+            TransferActivity::Verifying,
+        );
 
         let json = serde_json::to_value(&progress).expect("progress serializes");
 
@@ -771,6 +842,7 @@ mod tests {
                 "averageBytesPerSecond": 400,
                 "etaSeconds": 2,
                 "elapsedMs": 500,
+                "activity": "verifying",
             })
         );
         assert!(
@@ -816,6 +888,7 @@ mod tests {
             destination: PathBuf::from("D:\\dst"),
             operation: TransferOperation::Copy,
             conflict: ConflictStrategy::Skip,
+            verification: VerificationPolicy::Size,
             roots: vec![PlanRoot {
                 source: PathBuf::from("C:\\src"),
                 destination: PathBuf::from("D:\\dst\\src"),

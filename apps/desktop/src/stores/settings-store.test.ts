@@ -29,13 +29,20 @@ describe("settings store", () => {
   });
 
   it("hydrates settings from the service", async () => {
-    mockedGet.mockResolvedValue({ theme: "dark", locale: "ja" });
+    mockedGet.mockResolvedValue({
+      theme: "dark",
+      locale: "ja",
+      verification: "checksum",
+      historyLimit: 50,
+    });
 
     await useSettingsStore.getState().hydrate();
 
     expect(useSettingsStore.getState()).toMatchObject({
       theme: "dark",
       locale: "ja",
+      verification: "checksum",
+      historyLimit: 50,
       status: "ready",
       error: null,
     });
@@ -66,6 +73,8 @@ describe("settings store", () => {
       expect(mockedUpdate).toHaveBeenCalledWith({
         theme: "dark",
         locale: "en",
+        verification: DEFAULT_SETTINGS.verification,
+        historyLimit: DEFAULT_SETTINGS.historyLimit,
       });
       expect(useSettingsStore.getState().saveStatus).toBe("saved");
     });
@@ -82,6 +91,8 @@ describe("settings store", () => {
       expect(mockedUpdate).toHaveBeenCalledWith({
         theme: "system",
         locale: "pt-BR",
+        verification: DEFAULT_SETTINGS.verification,
+        historyLimit: DEFAULT_SETTINGS.historyLimit,
       }),
     );
   });
@@ -108,7 +119,56 @@ describe("settings store", () => {
       expect(mockedUpdate).toHaveBeenCalledWith({
         theme: "system",
         locale: "es",
+        verification: DEFAULT_SETTINGS.verification,
+        historyLimit: DEFAULT_SETTINGS.historyLimit,
       }),
+    );
+  });
+
+  it("setVerification persists the policy alongside the other settings", async () => {
+    useSettingsStore.setState({ theme: "dark", locale: "en" });
+    mockedUpdate.mockResolvedValue();
+
+    useSettingsStore.getState().setVerification("checksum");
+
+    expect(useSettingsStore.getState().verification).toBe("checksum");
+    await vi.waitFor(() =>
+      expect(mockedUpdate).toHaveBeenCalledWith({
+        theme: "dark",
+        locale: "en",
+        verification: "checksum",
+        historyLimit: DEFAULT_SETTINGS.historyLimit,
+      }),
+    );
+  });
+
+  it("setHistoryLimit persists the bound alongside the other settings", async () => {
+    useSettingsStore.setState({ theme: "dark", locale: "en" });
+    mockedUpdate.mockResolvedValue();
+
+    useSettingsStore.getState().setHistoryLimit(500);
+
+    expect(useSettingsStore.getState().historyLimit).toBe(500);
+    await vi.waitFor(() =>
+      expect(mockedUpdate).toHaveBeenCalledWith({
+        theme: "dark",
+        locale: "en",
+        verification: DEFAULT_SETTINGS.verification,
+        historyLimit: 500,
+      }),
+    );
+  });
+
+  it("rejects a history limit outside the backend's range", () => {
+    mockedUpdate.mockResolvedValue();
+
+    useSettingsStore.getState().setHistoryLimit(1);
+
+    expect(mockedUpdate).not.toHaveBeenCalled();
+    expect(useSettingsStore.getState().saveStatus).toBe("error");
+    expect(useSettingsStore.getState().error?.code).toBe("invalid_input");
+    expect(useSettingsStore.getState().historyLimit).toBe(
+      DEFAULT_SETTINGS.historyLimit,
     );
   });
 

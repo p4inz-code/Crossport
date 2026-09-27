@@ -1,8 +1,8 @@
-> **Status: core engine implemented (Phase 3).** Copy/move, the queue, real
-> progress, pause/resume/cancel, conflict resolution, and the safety rules below
-> exist today under `src-tauri/src/transfer/`. History persistence, crash
-> recovery, and post-transfer verification are not implemented yet; the sections
-> that describe them are planning material.
+> **Status: implemented (Phases 3 and 4).** Copy/move, the queue, real progress,
+> pause/resume/cancel, conflict resolution, and the safety rules below exist
+> under `src-tauri/src/transfer/`. Post-transfer verification, durable state,
+> transfer history, and crash recovery were added in Phase 4 and are documented
+> in `VERIFICATION.md`, `PERSISTENCE.md`, and `RECOVERY.md`.
 # CrossPort Transfer Engine
 
 Version: 1.0
@@ -32,9 +32,11 @@ its tests link no GUI libraries.
 | Planning, sizing, item budget, free-space check | `transfer/plan.rs` |
 | Source/destination validation, safe cleanup | `transfer/safety.rs` |
 | Conflict strategies | `transfer/conflict.rs` |
-| Streaming, temp-file commits, move semantics | `transfer/copy.rs` |
+| Streaming, temp-file commits, move semantics, per-item verification | `transfer/copy.rs` |
 | Queue, workers, identifiers, published snapshots | `transfer/mod.rs` |
-| IPC commands and `blocking` pool offload | `commands/transfer.rs` |
+| Verification policies, verdicts, streaming SHA-256 | `verification/mod.rs`, `verification/hash.rs` |
+| Durable state, history, and recovery | `archive.rs`, `recovery/`, `history/`, `persistence/` |
+| IPC commands and `blocking` pool offload | `commands/transfer.rs`, `commands/history.rs`, `commands/recovery.rs` |
 
 Facts worth knowing when changing it:
 
@@ -61,10 +63,13 @@ Facts worth knowing when changing it:
   request with a structured error instead of queueing work that cannot finish.
 - **Progress is throttled, not polled.** Snapshots are published at most every
   120 ms per job, and the UI can always resynchronize with `list_transfers`.
+- **What happens is written down.** Live job state is journaled while a job
+  runs (at most every 2 s), its history record is written before its live state
+  is forgotten, and a job becomes durable before a worker can claim it.
 
 ---
 
-# Implemented semantics and limits (Phase 3)
+# Implemented semantics and limits
 
 Stated precisely enough to build on, including the parts that are deliberately
 missing.
@@ -86,18 +91,25 @@ missing.
   the source only when nothing failed, was skipped, or was unsupported. A source
   that changed size mid-copy keeps its copy and its original, and is reported as
   an issue.
-- **Verification is byte-count only.** There is no checksum yet: a transfer
-  proves it wrote the number of bytes it planned, not that those bytes are the
-  ones the source held. Content verification is a later milestone.
-- **Nothing survives the process.** Jobs live in the engine's memory: no history,
-  no persistence of interrupted transfers, no crash recovery. If the app exits
-  mid-transfer, an uncommitted `.partial` file stays on disk and the next run
-  does not know about it.
+- **Verification proves what it says it proves.** The default `size` policy
+  compares each written file's byte count with the bytes streamed out of the
+  source; `checksum` also compares the SHA-256 computed while copying against
+  the file on disk; `none` records every file as skipped and ends with `not
+  verified` rather than a green badge. A job's own summary reports how many
+  planned files were checked and what was not — see `VERIFICATION.md`.
+- **Interrupted work is known, not guessed at.** Jobs are journaled while they
+  run, so the next start knows what was in flight and how far it had reported
+  getting. Nothing ever infers success from a destination file: a job that did
+  not prove it finished is treated as unfinished, classified as one of five
+  outcomes, and left for the user to restart, discard, or confirm — byte-offset
+  resume of a `.partial` file is deliberately refused. See `RECOVERY.md`.
 - **Links are reported, never followed.** Symlinks, junctions, and other reparse
   points are recorded as `unsupported` and are never read, copied, or deleted,
   which is what keeps a transfer inside the tree it was given.
-- **Metadata is not preserved.** Contents and directory structure are copied;
-  the source's modification time and read-only attribute are not reapplied.
+- **Metadata is not preserved — and says so.** Contents and directory structure
+  are copied; the source's modification time and read-only attribute are not
+  reapplied, and every verification summary reports those two claims as
+  explicitly false instead of leaving a verdict to imply otherwise.
 - **Read-only destinations are refused, not overridden.** Replacing an existing
   read-only entry fails with a structured error rather than clearing the
   attribute to make room — a visible failure beats silently changing an
@@ -119,6 +131,8 @@ The Transfer Engine handles:
 - Retry handling
 - Conflict resolution
 - Progress reporting
+- Post-transfer verification
+- Publishing what happened to the archive (durable state, history, recovery)
 
 ---
 
@@ -130,6 +144,8 @@ The Transfer Engine does not handle:
 - Notifications
 - Operating system UI
 - File browsing interface
+- Reading or writing its own documents: it publishes snapshots to the archive
+  through the `TransferJournal` port and never touches a file for durability
 
 ---
 
@@ -190,13 +206,18 @@ Requirements:
 
 # Pause and Resume
 
-The system should support recovery when possible.
+Pause keeps the job's worker and its open handles, so resuming continues the
+same file at the same offset: nothing is re-read or compared against a
+remembered position. A paused job therefore holds the worker, and jobs behind it
+wait until it is resumed or cancelled.
 
-Examples:
+That is in-process resume. It is not crash recovery: nothing persisted proves
+which prefix of a partially written file is valid, so after a crash the affected
+files are written again from zero — see `RECOVERY.md`.
 
-- Drive reconnect
-- Temporary failure
-- Network interruption (future)
+Recovery of a live job across a device that comes back, a temporary failure, or
+(later) a network interruption is the same mechanism: the job is planned again
+and its partial output is discarded, never resumed mid-file.
 
 ---
 
@@ -229,15 +250,21 @@ Future options:
 
 # Verification
 
-Verification is optional.
+Verification is optional and chosen per job (from the configured policy at the
+time the job is planned or started).
 
-Possible methods:
+Implemented methods:
 
-- Size comparison
-- Metadata comparison
-- Checksum verification
+- `none` — nothing is checked, and every file is recorded as skipped so the job
+  never reports a verdict it did not earn
+- `size` — each written file's byte count against the bytes read from the source
+- `checksum` — the size check plus a SHA-256 comparison of the bytes read from
+  the source against the file on disk
 
-Verification strategies can expand without changing the transfer architecture.
+Metadata is **not** compared or reapplied: the summary reports modified times
+and read-only attributes as not preserved. Strategies can expand without
+changing the transfer architecture; the full contract, cost, and failure
+behavior are in `VERIFICATION.md`.
 
 ---
 

@@ -28,6 +28,9 @@ export const BACKEND_ERROR_CODES = [
   "too_many_items",
   "transfer_not_found",
   "transfer_failed",
+  "verification_failed",
+  "state_unavailable",
+  "recovery_unavailable",
   "internal",
 ] as const;
 

@@ -30,17 +30,22 @@ import {
   isMoving,
   issueError,
   issueLabel,
+  isVerifying,
   jobError,
   keyedIssues,
+  metadataNote,
   TRANSFER_ISSUE_ICONS,
   TRANSFER_OPERATION_ICONS,
   TRANSFER_OPERATION_LABELS,
   TRANSFER_STATUS_ICONS,
-  TRANSFER_STATUS_LABELS,
   TRANSFER_STATUS_TONES,
   transferBytesLabel,
   transferCountsLabel,
+  transferStatusLabel,
   transferTitle,
+  VERIFICATION_ICONS,
+  VERIFICATION_TONES,
+  verificationLine,
 } from "../presentation";
 import "./TransferQueue.css";
 
@@ -143,10 +148,14 @@ function TransferCard({
   const StatusIcon = TRANSFER_STATUS_ICONS[job.status];
   const OperationIcon = TRANSFER_OPERATION_ICONS[job.operation];
   const title = transferTitle(job);
-  const { progress } = job;
+  const { progress, verification } = job;
   const percent = progress.percent;
   const problems = progress.failedItems + progress.skippedItems;
   const problem = failure ?? jobError(job);
+  const VerificationIcon = VERIFICATION_ICONS[verification.status];
+  const metadata = metadataNote(verification);
+  // A queued job has no verdict yet, so there is nothing to claim about it.
+  const showsVerification = verification.status !== "pending";
 
   return (
     <li className="transfer-card">
@@ -172,7 +181,7 @@ function TransferCard({
               isMoving(job) ? "transfer-card__status-icon--spin" : undefined
             }
           />
-          {TRANSFER_STATUS_LABELS[job.status]}
+          {transferStatusLabel(job)}
         </span>
       </div>
 
@@ -223,13 +232,41 @@ function TransferCard({
           <span className="transfer-card__current-name">
             {progress.currentFile}
           </span>
-          {progress.currentFileTotalBytes > 0 ? (
+          {isVerifying(job) ? (
+            <span>Checking what was written</span>
+          ) : progress.currentFileTotalBytes > 0 ? (
             <span>
               {formatBytes(progress.currentFileBytes)} of{" "}
               {formatBytes(progress.currentFileTotalBytes)}
             </span>
           ) : null}
         </p>
+      ) : null}
+
+      {showsVerification ? (
+        <div className="transfer-card__verification">
+          <p
+            className={cn(
+              "transfer-card__verdict",
+              `transfer-card__verdict--${VERIFICATION_TONES[verification.status]}`,
+            )}
+          >
+            <VerificationIcon
+              size={14}
+              strokeWidth={1.75}
+              aria-hidden="true"
+              className={
+                verification.status === "verifying"
+                  ? "transfer-card__status-icon--spin"
+                  : undefined
+              }
+            />
+            {verificationLine(verification)}
+          </p>
+          {metadata !== null ? (
+            <p className="transfer-card__metadata">{metadata}</p>
+          ) : null}
+        </div>
       ) : null}
 
       {problems > 0 && job.issues.length > 0 ? (

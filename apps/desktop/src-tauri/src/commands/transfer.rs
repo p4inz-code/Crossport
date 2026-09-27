@@ -25,10 +25,17 @@ use crate::transfer::plan;
 ///
 /// Read-only. Unsafe source/destination relationships and unreadable sources
 /// are reported here with the same structured errors `start_transfer` uses, so
-/// a UI can warn before the user commits.
+/// a UI can warn before the user commits. The configured verification policy is
+/// folded into the request here too, so the preview promises exactly what the
+/// started job will do.
 #[tauri::command]
-pub async fn plan_transfer(request: TransferRequest) -> AppResult<TransferPreview> {
+pub async fn plan_transfer(
+    state: State<'_, AppState>,
+    request: TransferRequest,
+) -> AppResult<TransferPreview> {
+    let policy = state.settings_snapshot()?.verification;
     run_blocking("plan_transfer", move || {
+        let request = request.resolve_verification(policy);
         let planned = plan::plan_request(&request)?;
         let available = drives::available_bytes(&planned.destination);
         Ok(TransferPreview::from_plan(&planned, available))
@@ -42,12 +49,18 @@ pub async fn plan_transfer(request: TransferRequest) -> AppResult<TransferPrevie
 /// destination that is inside its own source, a destination that cannot be
 /// written, a plan larger than the engine will enumerate, or a destination
 /// without enough free space.
+///
+/// The request's verification policy is resolved from the settings here, once:
+/// a job is queued and persisted with the policy it will actually run under, so
+/// changing the setting later cannot alter work already accepted.
 #[tauri::command]
 pub async fn start_transfer(
     state: State<'_, AppState>,
     request: TransferRequest,
 ) -> AppResult<TransferSnapshot> {
+    let policy = state.settings_snapshot()?.verification;
     let transfers = state.transfers.clone();
+    let request = request.resolve_verification(policy);
     run_blocking("start_transfer", move || transfers.enqueue_request(request)).await
 }
 

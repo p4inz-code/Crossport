@@ -15,6 +15,9 @@ use crate::platform::AppPaths;
 /// Supported theme modes. Mirrors `THEME_MODES` in the frontend.
 pub const THEMES: [&str; 3] = ["light", "dark", "system"];
 
+use crate::history::{self, DEFAULT_HISTORY_LIMIT};
+use crate::verification::VerificationPolicy;
+
 /// File name of the persisted settings document.
 const SETTINGS_FILE: &str = "settings.json";
 
@@ -28,6 +31,15 @@ const SETTINGS_FILE: &str = "settings.json";
 pub struct AppSettings {
     pub theme: String,
     pub locale: String,
+    /// How thoroughly a transfer verifies what it wrote, applied whenever a
+    /// request does not name its own policy.
+    ///
+    /// The default is size verification: cheap, always meaningful, and it
+    /// catches what disks actually do. Hashing every file is available, but it
+    /// is a choice rather than an imposition.
+    pub verification: VerificationPolicy,
+    /// How many finished transfers history keeps, oldest pruned first.
+    pub history_limit: u32,
 }
 
 impl Default for AppSettings {
@@ -35,6 +47,8 @@ impl Default for AppSettings {
         Self {
             theme: "system".to_string(),
             locale: "en".to_string(),
+            verification: VerificationPolicy::default(),
+            history_limit: DEFAULT_HISTORY_LIMIT,
         }
     }
 }
@@ -55,6 +69,7 @@ impl AppSettings {
                 "locale must be between 2 and 16 characters".to_string(),
             ));
         }
+        history::validate_limit(self.history_limit).map_err(AppError::InvalidInput)?;
         Ok(())
     }
 }
@@ -155,6 +170,7 @@ mod tests {
             let settings = AppSettings {
                 theme: theme.to_string(),
                 locale: "en".to_string(),
+                ..AppSettings::default()
             };
             assert!(
                 settings.validate().is_ok(),
@@ -168,6 +184,7 @@ mod tests {
         let settings = AppSettings {
             theme: "neon".to_string(),
             locale: "en".to_string(),
+            ..AppSettings::default()
         };
         assert!(settings.validate().is_err());
     }
@@ -177,6 +194,7 @@ mod tests {
         let settings = AppSettings {
             theme: "light".to_string(),
             locale: "x".to_string(),
+            ..AppSettings::default()
         };
         assert!(settings.validate().is_err());
     }
@@ -186,6 +204,7 @@ mod tests {
         let settings = AppSettings {
             theme: "light".to_string(),
             locale: "x".repeat(17),
+            ..AppSettings::default()
         };
         assert!(settings.validate().is_err());
     }
@@ -195,6 +214,8 @@ mod tests {
         let settings = AppSettings {
             theme: "dark".to_string(),
             locale: "fr".to_string(),
+            verification: VerificationPolicy::Checksum,
+            history_limit: 50,
         };
         let json = serde_json::to_string(&settings).expect("settings should serialize");
         let parsed: AppSettings = serde_json::from_str(&json).expect("settings should parse");
@@ -213,7 +234,12 @@ mod tests {
         let value = serde_json::to_value(AppSettings::default()).expect("should serialize");
         assert_eq!(
             value,
-            serde_json::json!({ "theme": "system", "locale": "en" })
+            serde_json::json!({
+                "theme": "system",
+                "locale": "en",
+                "verification": "size",
+                "historyLimit": DEFAULT_HISTORY_LIMIT,
+            })
         );
     }
 
@@ -226,6 +252,7 @@ mod tests {
             AppSettings {
                 theme: "dark".to_string(),
                 locale: AppSettings::default().locale,
+                ..AppSettings::default()
             }
         );
     }
@@ -246,6 +273,61 @@ mod tests {
     }
 
     #[test]
+    fn the_default_verification_policy_is_size() {
+        assert_eq!(
+            AppSettings::default().verification,
+            VerificationPolicy::Size,
+            "a fresh install must verify what it writes"
+        );
+    }
+
+    #[test]
+    fn every_verification_policy_round_trips() {
+        for policy in [
+            VerificationPolicy::None,
+            VerificationPolicy::Size,
+            VerificationPolicy::Checksum,
+        ] {
+            let settings = AppSettings {
+                verification: policy,
+                ..AppSettings::default()
+            };
+            let json = serde_json::to_string(&settings).expect("settings serialize");
+            let parsed: AppSettings = serde_json::from_str(&json).expect("settings parse");
+            assert_eq!(parsed.verification, policy);
+        }
+    }
+
+    #[test]
+    fn a_history_limit_outside_the_range_is_rejected() {
+        let too_small = AppSettings {
+            history_limit: history::MIN_HISTORY_LIMIT - 1,
+            ..AppSettings::default()
+        };
+        assert!(too_small.validate().is_err());
+
+        let too_large = AppSettings {
+            history_limit: history::MAX_HISTORY_LIMIT + 1,
+            ..AppSettings::default()
+        };
+        assert!(too_large.validate().is_err());
+
+        let accepted = AppSettings {
+            history_limit: history::MAX_HISTORY_LIMIT,
+            ..AppSettings::default()
+        };
+        assert!(accepted.validate().is_ok());
+    }
+
+    #[test]
+    fn a_settings_file_without_phase_four_fields_still_loads() {
+        let parsed: AppSettings = serde_json::from_str(r#"{"theme":"dark","locale":"en"}"#)
+            .expect("older files must load");
+        assert_eq!(parsed.verification, VerificationPolicy::Size);
+        assert_eq!(parsed.history_limit, DEFAULT_HISTORY_LIMIT);
+    }
+
+    #[test]
     fn a_missing_file_loads_defaults() {
         let (dir, path) = settings_path("settings-missing");
 
@@ -263,6 +345,7 @@ mod tests {
         let settings = AppSettings {
             theme: "dark".to_string(),
             locale: "pt-BR".to_string(),
+            ..AppSettings::default()
         };
 
         write_settings(&path, &settings).expect("settings should be writable");
@@ -297,6 +380,7 @@ mod tests {
             &AppSettings {
                 theme: "light".to_string(),
                 locale: "en".to_string(),
+                ..AppSettings::default()
             },
         )
         .expect("first write");
@@ -304,6 +388,7 @@ mod tests {
         let next = AppSettings {
             theme: "dark".to_string(),
             locale: "de".to_string(),
+            ..AppSettings::default()
         };
         write_settings(&path, &next).expect("second write");
 
@@ -318,6 +403,7 @@ mod tests {
         let invalid = AppSettings {
             theme: "neon".to_string(),
             locale: "en".to_string(),
+            ..AppSettings::default()
         };
 
         let error = write_settings(&path, &invalid).expect_err("invalid settings are rejected");

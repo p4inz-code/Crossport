@@ -4,4 +4,4 @@
 
 export { cn } from "./cn";
 export { APP_NAME, APP_VERSION, STORAGE_KEYS } from "./constants";
-export { formatBytes, formatDateTime } from "./format";
+export { formatBytes, formatDateTime, formatDuration } from "./format";

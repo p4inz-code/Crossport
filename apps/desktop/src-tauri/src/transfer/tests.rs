@@ -8,6 +8,9 @@
 use super::*;
 use crate::filesystem::test_support::unique_temp_dir;
 use crate::transfer::copy::COPY_BUFFER_BYTES;
+use crate::verification::{
+    ChecksumAlgorithm, VerificationMethod, VerificationPolicy, VerificationStatus,
+};
 
 use std::path::{Path, PathBuf};
 
@@ -38,6 +41,7 @@ fn request_for(
         destination: destination.display().to_string(),
         operation,
         conflict,
+        verification: None,
     }
 }
 
@@ -970,17 +974,11 @@ fn timing_excludes_paused_time_and_offers_an_eta_only_while_running() {
             transferred_bytes: 1_000,
             ..TransferCounters::default()
         },
-        error: None,
-        issues: Vec::new(),
-        issues_truncated: false,
         started_ms: Some(1),
-        finished_ms: None,
         started_at: Some(base),
-        finished_instant: None,
-        paused_at: None,
         paused_total: Duration::from_secs(1),
-        last_emit: None,
         samples: vec![(base, 0), (base + Duration::from_secs(1), 1_000)].into(),
+        ..JobRuntime::default()
     };
 
     let running = timing_of(&runtime, base + Duration::from_secs(3));
@@ -1016,17 +1014,7 @@ fn a_job_that_was_never_started_reports_no_timing() {
             total_bytes: 500,
             ..TransferCounters::default()
         },
-        error: None,
-        issues: Vec::new(),
-        issues_truncated: false,
-        started_ms: None,
-        finished_ms: None,
-        started_at: None,
-        finished_instant: None,
-        paused_at: None,
-        paused_total: Duration::ZERO,
-        last_emit: None,
-        samples: VecDeque::new(),
+        ..JobRuntime::default()
     };
 
     let timing = timing_of(&runtime, Instant::now());
@@ -1042,17 +1030,7 @@ fn issue_lists_are_bounded_and_flagged() {
     let mut runtime = JobRuntime {
         status: TransferStatus::Running,
         counters: TransferCounters::default(),
-        error: None,
-        issues: Vec::new(),
-        issues_truncated: false,
-        started_ms: None,
-        finished_ms: None,
-        started_at: None,
-        finished_instant: None,
-        paused_at: None,
-        paused_total: Duration::ZERO,
-        last_emit: None,
-        samples: VecDeque::new(),
+        ..JobRuntime::default()
     };
 
     for index in 0..(MAX_ISSUES + 10) {
@@ -1343,6 +1321,149 @@ fn a_failing_job_publishes_its_failure_immediately() {
             .and_then(|issue| issue.error.as_ref())
             .map(|error| error.code()),
         Some("path_not_found")
+    );
+
+    engine.shutdown();
+    clean_up(&workspace);
+}
+
+// -- verification in the copy path ------------------------------------------
+
+/// A copy request that states its verification policy, as the command layer
+/// does when it folds the configured policy into a job.
+fn request_verifying(
+    source: &Path,
+    destination: &Path,
+    policy: VerificationPolicy,
+) -> TransferRequest {
+    let mut request = request_for(
+        &[source],
+        destination,
+        TransferOperation::Copy,
+        ConflictStrategy::Skip,
+    );
+    request.verification = Some(policy);
+    request
+}
+
+#[test]
+fn a_copy_proves_its_size_when_the_policy_asks_for_it() {
+    let workspace = unique_temp_dir("engine-verify-size");
+    let source = workspace.join("payload.bin");
+    write_file(&source, 32 * 1024);
+    let destination = workspace.join("out");
+    std::fs::create_dir_all(&destination).expect("destination is creatable");
+
+    let engine = TransferEngine::new(1);
+    let job = engine
+        .enqueue_request(request_verifying(
+            &source,
+            &destination,
+            VerificationPolicy::Size,
+        ))
+        .expect("the job is accepted");
+    let finished = wait_for_status(&engine, &job.id, TransferStatus::Completed);
+
+    let verification = &finished.verification;
+    assert_eq!(verification.status, VerificationStatus::Verified);
+    assert_eq!(verification.policy, VerificationPolicy::Size);
+    assert_eq!(verification.method, VerificationMethod::Size);
+    assert_eq!(verification.planned_files, 1);
+    assert_eq!(verification.checked_files, 1);
+    assert_eq!(verification.verified_files, 1);
+    assert_eq!(verification.unverified_files, 0);
+    assert_eq!(verification.verified_bytes, 32 * 1024);
+    assert!(
+        !verification.coverage.checksum,
+        "a size check must never claim a checksum was compared"
+    );
+    assert!(
+        !verification.coverage.modified_time_preserved && !verification.coverage.readonly_preserved,
+        "this engine does not reapply metadata, and says so"
+    );
+    assert!(
+        verification.verdict().starts_with("verified (size"),
+        "the verdict states the method that ran: {}",
+        verification.verdict()
+    );
+
+    engine.shutdown();
+    clean_up(&workspace);
+}
+
+#[test]
+fn a_checksum_policy_compares_the_source_bytes_with_the_file_on_disk() {
+    let workspace = unique_temp_dir("engine-verify-checksum");
+    let source = workspace.join("payload.bin");
+    write_file(&source, 8 * 1024);
+    let destination = workspace.join("out");
+    std::fs::create_dir_all(&destination).expect("destination is creatable");
+
+    let engine = TransferEngine::new(1);
+    let job = engine
+        .enqueue_request(request_verifying(
+            &source,
+            &destination,
+            VerificationPolicy::Checksum,
+        ))
+        .expect("the job is accepted");
+    let finished = wait_for_status(&engine, &job.id, TransferStatus::Completed);
+
+    let verification = &finished.verification;
+    assert_eq!(verification.status, VerificationStatus::Verified);
+    assert_eq!(verification.method, VerificationMethod::SizeAndChecksum);
+    assert_eq!(
+        verification.checksum_algorithm,
+        Some(ChecksumAlgorithm::Sha256)
+    );
+    assert!(verification.coverage.checksum);
+    assert_eq!(
+        verification.checked_files, verification.planned_files,
+        "every planned file was checked, not just some"
+    );
+    // The check is about data, so the data is compared independently of it.
+    assert_eq!(
+        std::fs::read(&source).expect("the source is readable"),
+        std::fs::read(destination.join("payload.bin")).expect("the copy is readable"),
+        "a verified copy holds the source's bytes"
+    );
+
+    engine.shutdown();
+    clean_up(&workspace);
+}
+
+#[test]
+fn a_job_with_no_verification_reports_skipped_instead_of_verified() {
+    let workspace = unique_temp_dir("engine-verify-none");
+    let source = workspace.join("payload.bin");
+    write_file(&source, 1024);
+    let destination = workspace.join("out");
+    std::fs::create_dir_all(&destination).expect("destination is creatable");
+
+    let engine = TransferEngine::new(1);
+    let job = engine
+        .enqueue_request(request_verifying(
+            &source,
+            &destination,
+            VerificationPolicy::None,
+        ))
+        .expect("the job is accepted");
+    let finished = wait_for_status(&engine, &job.id, TransferStatus::Completed);
+
+    let verification = &finished.verification;
+    assert_eq!(verification.status, VerificationStatus::Skipped);
+    assert_eq!(verification.policy, VerificationPolicy::None);
+    assert_eq!(verification.skipped_files, 1);
+    assert_eq!(verification.checked_files, 0);
+    assert_eq!(verification.verified_files, 0);
+    assert_eq!(verification.verdict(), "not verified");
+    assert!(
+        !verification.coverage.size && !verification.coverage.checksum,
+        "nothing about the bytes was checked, so nothing may be claimed"
+    );
+    assert!(
+        finished.status == TransferStatus::Completed,
+        "a job that did not verify is still a job that finished; the verdict says the rest"
     );
 
     engine.shutdown();

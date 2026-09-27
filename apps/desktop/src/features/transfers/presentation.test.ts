@@ -5,12 +5,14 @@ import {
   makeTransferIssue,
   makeTransferProgress,
   makeTransferSnapshot,
+  makeVerificationSummary,
 } from "@/test/fixtures";
 import {
   CONFLICT_STRATEGIES,
   TRANSFER_ISSUE_REASONS,
   TRANSFER_OPERATIONS,
   TRANSFER_STATUSES,
+  VERIFICATION_STATUSES,
 } from "@/types";
 import {
   basename,
@@ -26,8 +28,10 @@ import {
   isMoving,
   issueError,
   issueLabel,
+  isVerifying,
   jobError,
   keyedIssues,
+  metadataNote,
   TRANSFER_ISSUE_ICONS,
   TRANSFER_ISSUE_LABELS,
   TRANSFER_OPERATION_ICONS,
@@ -38,7 +42,11 @@ import {
   transferBytesLabel,
   transferCountsLabel,
   transferOutcomeLabel,
+  transferStatusLabel,
   transferTitle,
+  VERIFICATION_ICONS,
+  VERIFICATION_TONES,
+  verificationLine,
 } from "./presentation";
 
 describe("transfer wording", () => {
@@ -103,6 +111,83 @@ describe("job controls", () => {
     );
 
     expect(moving).toEqual(["preparing", "running"]);
+  });
+});
+
+describe("verification wording", () => {
+  it("has a tone and an icon for every published verification status", () => {
+    for (const status of VERIFICATION_STATUSES) {
+      expect(VERIFICATION_TONES[status]).toBeTruthy();
+      expect(VERIFICATION_ICONS[status]).toBeTruthy();
+    }
+  });
+
+  it("calls a job that is checking its output Verifying", () => {
+    const checking = makeTransferSnapshot({
+      status: "running",
+      progress: makeTransferProgress({ activity: "verifying" }),
+    });
+
+    expect(isVerifying(checking)).toBe(true);
+    expect(transferStatusLabel(checking)).toBe("Verifying");
+    expect(transferStatusLabel(makeTransferSnapshot())).toBe("Transferring");
+    expect(
+      transferStatusLabel(makeTransferSnapshot({ status: "paused" })),
+    ).toBe("Paused");
+  });
+
+  it("never calls a job verifying unless it is still running", () => {
+    for (const status of TRANSFER_STATUSES) {
+      expect(
+        isVerifying(
+          makeTransferSnapshot({
+            status,
+            progress: makeTransferProgress({ activity: "verifying" }),
+          }),
+        ),
+      ).toBe(status === "running");
+    }
+  });
+
+  it("states both the policy and the backend's own verdict", () => {
+    const summary = makeVerificationSummary({
+      status: "verified",
+      policy: "checksum",
+      method: "size_and_checksum",
+      checksumAlgorithm: "sha256",
+      verdict: "verified (size_and_checksum, 2 files, 4096 bytes)",
+    });
+
+    expect(verificationLine(summary)).toBe(
+      "SHA-256 verification — verified (size_and_checksum, 2 files, 4096 bytes)",
+    );
+  });
+
+  it("says what was not preserved instead of letting a badge imply it", () => {
+    expect(metadataNote(makeVerificationSummary())).toBe(
+      "Modified times and read-only attributes are not reapplied.",
+    );
+    expect(
+      metadataNote(
+        makeVerificationSummary({
+          coverage: {
+            ...makeVerificationSummary().coverage,
+            modifiedTimePreserved: true,
+            readonlyPreserved: true,
+          },
+        }),
+      ),
+    ).toBeNull();
+    expect(
+      metadataNote(
+        makeVerificationSummary({
+          coverage: {
+            ...makeVerificationSummary().coverage,
+            modifiedTimePreserved: true,
+          },
+        }),
+      ),
+    ).toBe("Read-only attributes are not reapplied.");
   });
 });
 

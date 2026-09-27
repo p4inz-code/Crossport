@@ -6,10 +6,9 @@ Free forever. Offline first. No accounts, no ads, no telemetry.
 
 ## Status
 
-Phase 3 (the transfer engine) is complete: copying, moving, queues, progress,
-pause/resume/cancel, and conflict resolution are implemented. Transfer history,
-crash recovery, and post-transfer verification are still ahead. The repository
-currently provides:
+Phase 4 (verification, recovery, and history) is complete: transfers verify
+what they wrote, what happened survives a crash, and finished jobs are recorded
+and readable. The repository currently provides:
 
 - A Tauri 2 desktop shell (React 19 + TypeScript + Vite frontend, Rust backend)
 - A design-token-driven UI system with light/dark/system themes
@@ -38,13 +37,29 @@ currently provides:
 - A transfer surface: multi-select in the browser, a composer that shows the
   backend's dry run before anything is queued, and a queue page with per-job
   progress, issues, and controls
+- Post-transfer verification with three policies (`size` by default, SHA-256
+  `checksum`, or `none`): the checksum compares the digest of the bytes read from
+  the source against the file on disk, a mismatch fails its item while keeping
+  the file it wrote, and every verdict states what was checked and what was not
+- Durable state and history: versioned, atomically written documents that
+  survive a crash, with damaged files preserved beside the original rather than
+discarded
+- Crash recovery: interrupted transfers are classified into explicit outcomes
+  and left for the user to restart, discard, or confirm. Nothing is restarted
+automatically, and byte-offset resume of a partial file is deliberately refused
+- Transfer history with per-record verdicts, filters, retention by count, and a
+  details view
+- Notifications for finished, failed, verification-failed, skipped, and
+  interrupted transfers
 - Windows-safe production logging (stdout + rotating per-app log file)
 - A restrictive CSP and a minimal Tauri capability set
 - Real test suites (Vitest + `cargo test`) and CI
 
-Transfer history and post-transfer verification are **not** implemented yet —
-they are deliberately absent rather than stubbed. See
-[`ROADMAP.md`](ROADMAP.md) and [`docs/product/FEATURE_SPECIFICATION.md`](docs/product/FEATURE_SPECIFICATION.md).
+Not implemented yet: folder synchronization, scheduling, and the other Version 2+
+candidates in
+[`docs/product/FEATURE_SPECIFICATION.md`](docs/product/FEATURE_SPECIFICATION.md) —
+they are deliberately absent rather than stubbed. See [`ROADMAP.md`](ROADMAP.md)
+for the phase plan.
 
 ## Repository layout
 
@@ -104,8 +119,11 @@ backend call goes through one transport module that validates payloads and
 normalizes failures into `IpcError` with a stable code. The Rust backend owns
 user settings, persists them to the platform app-config directory, and exposes
 commands for settings, platform facts, volume detection, directory listing,
-path inspection, and the native folder picker. Filesystem and platform work stays in Rust, so the
-webview is granted only Tauri core defaults.
+path inspection, the native folder picker, transfers, history, and recovery.
+Transfer documents (state, history) go through one atomic, versioned document
+layer, and the archive is the only module that knows both the live engine and
+the durable side. Filesystem and platform work stays in Rust, so the webview is
+granted only Tauri core defaults.
 
 See [`docs/architecture/SYSTEM_ARCHITECTURE.md`](docs/architecture/SYSTEM_ARCHITECTURE.md)
 for details.

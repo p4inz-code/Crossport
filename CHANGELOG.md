@@ -9,6 +9,74 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Post-transfer verification (`src-tauri/src/verification/`): three policies
+  (`none`, `size`, `checksum`) mapped onto the method that actually ran. `size`
+  compares each written file's byte count against the bytes streamed out of the
+  source; `checksum` also compares the SHA-256 computed **while copying** against
+  the file on disk, so a source that changed mid-copy cannot quietly pass.
+  Verification runs inside an item's own completion — the job stays `running`
+  with `activity: verifying` while a file is checked — and a mismatch fails that
+  item, keeps the file it wrote, and reports both sides of the discrepancy. The
+  job's summary states what was checked, what was not (`unverifiedFiles`), and
+  that modified times and read-only attributes are **not** reapplied, so a green
+  verdict never implies metadata was preserved. A checksum that cannot be
+  compared is a failure, not a pass.
+- Durable documents (`src-tauri/src/persistence/`): every transfer document is
+  written to a unique temporary file, flushed, and renamed over the live path,
+  carries a `schemaVersion`, migrates an older schema on read, refuses to
+  overwrite a newer one, and preserves a damaged file as `*.corrupt-<ms>.*`
+  instead of discarding it. Load outcomes are published to the UI as
+  `loaded` / `missing` / `migrated` / `recovered` / `unsupported`.
+- Transfer history (`src-tauri/src/history/`): one durable record per finished
+  job — identity, intent, outcome, counters, timing, bounded issue sample, the
+  verification verdict, and the recovery action where one applied. Interrupted
+  and recovered jobs are recorded as such rather than as failures or successes.
+  Retention is by count (default 200, range 20–2000), newest first, with the
+  prune reported; writes happen under the store's lock so records are never
+  lost.
+- Crash recovery (`src-tauri/src/recovery/`): live job state is journaled while
+  a job runs and dropped only after its history record is written, so a crash
+  can never leave a finished job looking unfinished. Interrupted jobs are
+  classified into five explicit outcomes (`completed_before_crash`,
+  `restart_required`, `source_missing`, `destination_unavailable`,
+  `unsupported`), with the request stored whole so a restart replays the policy
+  and conflict strategy the user chose. Artifacts are matched exactly to their
+  own job (`.crossport-<job>-<index>.partial`), never by name resemblance, and
+  byte-offset resume is refused: a restart removes the leftovers and starts the
+  affected files from zero.
+- The archive (`src-tauri/src/archive.rs`): the one module that knows both the
+  live engine and the durable side. It journals live state, writes history
+  first and forgets state second, answers recovery questions, and reports each
+  document's load state so a damaged file is visible instead of looking like an
+  empty history.
+- Recovery and history commands: `list_history`, `get_history_record`,
+  `delete_history_record`, `clear_history`, `get_archive_status`,
+  `list_recovery_candidates`, `get_recovery_candidate`, `recover_transfer`
+  (with `discard`, `restart`, and `confirm`, and a `RecoveryReport` in reply).
+- New backend error categories `verification_failed`, `state_unavailable`, and
+  `recovery_unavailable`, mirrored in the frontend code list and documented in
+  `docs/architecture/ERROR_HANDLING.md`.
+- Settings for verification policy and history retention, validated on both
+  sides. The policy is folded into a job's request when it is planned or
+  started, so changing the setting later cannot alter queued work.
+- Frontend verification, history, recovery, and archive layers:
+  `src/types/{verification,archive,history,recovery}.ts` (the wire contract as
+  zod schemas), `history-service.ts` and `recovery-service.ts`, and the
+  history, recovery, and notification stores.
+- History UI: a list of finished transfers with status, size, duration, and
+  verdict, filters, empty and degraded states, and a details view with the
+  request, counters, issues, and recovery action.
+- Recovery UI: a page listing interrupted jobs with their outcome, progress
+  before the interruption, artifacts left on disk, and what a restart would do,
+  with Discard and Restart (or Confirm) exactly where they apply, plus a shell
+  banner and sidebar count for jobs awaiting a decision.
+- Notifications: finished, failed, verification-failed, skipped-item, and
+  interrupted-transfer feedback, raised once per transition and deduplicated,
+  with a verification failure never presented as a plain transfer failure.
+- The transfer queue surface now says `Verifying` while a job checks its output
+  and shows the verdict and what was not reapplied.
+- Documentation: `docs/architecture/VERIFICATION.md`,
+  `docs/architecture/RECOVERY.md`, and `docs/architecture/PERSISTENCE.md`.
 - Transfer engine (`src-tauri/src/transfer/`): a real copy/move engine with a
   planned destination for every item. `plan.rs` walks sources in Rust with a
   100,000-item budget and resolves collisions before anything is touched;
@@ -118,6 +186,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- A verification failure fails its item and the job, and reports what was
+  expected and what was found, instead of a job ending as a plain success with
+  only a byte count behind it.
+- Finished jobs write a history record before their live state is forgotten, so
+  an interrupted application can tell a finished job from an unfinished one.
+- The transfer engine journals live state before a job can be claimed by a
+  worker and before its terminal event is published, closing two races where a
+  crash could have lost a queued job or shown a finished one as unfinished.
+- Temporary document names carry the process id and a counter, fixing a real
+  collision between concurrent writers.
 - The Drives page can now compose transfers: entries are multi-selected and
   copied or moved to a destination chosen in the native dialog, and the
   backend's dry run is shown — what moves, what collides, how much space the

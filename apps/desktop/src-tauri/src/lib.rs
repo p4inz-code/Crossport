@@ -7,22 +7,29 @@
  * given the app handle so it can publish typed progress events.
  * ========================================================================== */
 
+pub mod archive;
 mod commands;
 mod config;
 mod errors;
 mod filesystem;
+mod history;
 mod logging;
+mod persistence;
 mod platform;
+mod recovery;
 mod settings;
 mod state;
 pub mod transfer;
+pub mod verification;
 
 use std::sync::Arc;
 
 use tauri::{Emitter, Manager};
 
+use archive::TransferArchive;
+use platform::AppPaths;
 use state::AppState;
-use transfer::{TransferPublisher, TransferSnapshot};
+use transfer::{TransferJournal, TransferPublisher, TransferSnapshot};
 
 /// Publishes transfer progress to the frontend as typed `transfer:update`
 /// events.
@@ -53,6 +60,14 @@ pub fn run() {
             commands::drives::list_drives,
             commands::filesystem::inspect_path,
             commands::filesystem::list_directory,
+            commands::history::clear_history,
+            commands::history::delete_history_record,
+            commands::history::get_archive_status,
+            commands::history::get_history_record,
+            commands::history::list_history,
+            commands::recovery::get_recovery_candidate,
+            commands::recovery::list_recovery_candidates,
+            commands::recovery::recover_transfer,
             commands::settings::get_settings,
             commands::settings::update_settings,
             commands::system::get_system_info,
@@ -77,6 +92,37 @@ pub fn run() {
                 Err(error) => log::error!("failed to load settings: {error}"),
             }
             logging::init(app.handle());
+
+            // The durable archive: transfer history, interrupted jobs, and
+            // recovery. Opened after settings so the retention bound is the
+            // user's, and inside setup so every command that needs it finds it.
+            let limit = app
+                .state::<AppState>()
+                .settings_snapshot()
+                .map(|settings| settings.history_limit)
+                .unwrap_or(history::DEFAULT_HISTORY_LIMIT);
+            match AppPaths::resolve(app.handle()) {
+                Ok(paths) => {
+                    let (archive, history_status, state_status) =
+                        TransferArchive::open(&paths.config_dir, limit);
+                    if archive.degraded() {
+                        log::warn!(
+                            "the transfer archive loaded with a document it could not use: \
+                             history={history_status:?}, state={state_status:?}"
+                        );
+                    }
+                    app.state::<AppState>()
+                        .transfers
+                        .attach_journal(Arc::clone(&archive) as Arc<dyn TransferJournal>);
+                    if let Err(error) = app.state::<AppState>().install_archive(archive) {
+                        log::error!("failed to install the transfer archive: {error}");
+                    }
+                }
+                Err(error) => {
+                    log::error!("failed to resolve the application directories: {error}");
+                }
+            }
+
             // Progress events need the app handle; transfers started before
             // this point would simply run without publishing progress.
             app.state::<AppState>()

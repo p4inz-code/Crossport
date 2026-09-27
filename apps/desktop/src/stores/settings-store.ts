@@ -20,6 +20,7 @@ import {
   type SaveStatus,
   settingsSchema,
   type ThemeMode,
+  type VerificationPolicy,
 } from "@/types";
 
 interface SettingsState extends AppSettings {
@@ -31,6 +32,14 @@ interface SettingsState extends AppSettings {
   saveStatus: SaveStatus;
   setTheme: (theme: ThemeMode) => void;
   setLocale: (locale: string) => void;
+  /**
+   * Sets the policy transfers run under when they do not name one. It applies
+   * to jobs started from now on; a job already queued keeps the policy it was
+   * accepted with.
+   */
+  setVerification: (policy: VerificationPolicy) => void;
+  /** Sets how many finished transfers history keeps, pruning the oldest. */
+  setHistoryLimit: (limit: number) => void;
   /** Loads persisted settings, falling back to defaults. */
   hydrate: () => Promise<void>;
 }
@@ -69,7 +78,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
     saveStatus: "idle",
 
     setTheme: (theme) => {
-      const next: AppSettings = { theme, locale: get().locale };
+      const next: AppSettings = { ...currentSettings(get()), theme };
       if (!apply(next)) {
         return;
       }
@@ -78,11 +87,32 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
     },
 
     setLocale: (locale) => {
-      const next: AppSettings = { locale: locale.trim(), theme: get().theme };
+      const next: AppSettings = {
+        ...currentSettings(get()),
+        locale: locale.trim(),
+      };
       if (!apply(next)) {
         return;
       }
       set({ locale: next.locale });
+      void persist(next);
+    },
+
+    setVerification: (verification) => {
+      const next: AppSettings = { ...currentSettings(get()), verification };
+      if (!apply(next)) {
+        return;
+      }
+      set({ verification });
+      void persist(next);
+    },
+
+    setHistoryLimit: (historyLimit) => {
+      const next: AppSettings = { ...currentSettings(get()), historyLimit };
+      if (!apply(next)) {
+        return;
+      }
+      set({ historyLimit: next.historyLimit });
       void persist(next);
     },
 
@@ -99,6 +129,16 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
     },
   };
 });
+
+/** The settings fields currently in the store, as a settings document. */
+function currentSettings(state: AppSettings): AppSettings {
+  return {
+    theme: state.theme,
+    locale: state.locale,
+    verification: state.verification,
+    historyLimit: state.historyLimit,
+  };
+}
 
 /** Human-readable reason for a rejected settings document. */
 function validateMessage(candidate: AppSettings): string {

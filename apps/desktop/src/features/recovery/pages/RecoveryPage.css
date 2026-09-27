@@ -1,0 +1,141 @@
+/* ==========================================================================
+ * Recovery page
+ * ========================================================================== */
+
+.recovery-page__degraded,
+.recovery-page__error {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: 10px;
+}
+
+.recovery-page__degraded {
+  border: 1px solid var(--color-warning, #d97706);
+  background: color-mix(in srgb, var(--color-warning, #d97706) 8%, transparent);
+}
+
+.recovery-page__error {
+  flex-direction: column;
+  border: 1px solid var(--color-danger, #dc2626);
+}
+
+.recovery-page__degraded-title,
+.recovery-page__error-title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.recovery-page__degraded-detail,
+.recovery-page__error-message {
+  margin: 2px 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.recovery-page__list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recovery-card__outcome {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--color-surface-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.recovery-card--completed_before_crash .recovery-card__outcome {
+  color: var(--color-success, #16a34a);
+}
+
+.recovery-card--restart_required .recovery-card__outcome {
+  color: var(--color-warning, #d97706);
+}
+
+.recovery-card--source_missing .recovery-card__outcome,
+.recovery-card--destination_unavailable .recovery-card__outcome,
+.recovery-card--unsupported .recovery-card__outcome {
+  color: var(--color-danger, #dc2626);
+}
+
+.recovery-card__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px 20px;
+  margin: 0;
+}
+
+.recovery-card__field--wide {
+  grid-column: 1 / -1;
+}
+
+.recovery-card__field dt {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.recovery-card__field dd {
+  margin: 3px 0 0;
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+}
+
+.recovery-card__reason,
+.recovery-card__proof,
+.recovery-card__impact {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 12px 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.recovery-card__proof {
+  color: var(--color-success, #16a34a);
+}
+
+.recovery-card__failure {
+  margin: 12px 0 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-danger, #dc2626);
+}
+
+.recovery-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.recovery-page__notes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.recovery-page__notes p {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--color-text-muted);
+}

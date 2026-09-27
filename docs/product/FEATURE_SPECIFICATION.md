@@ -1,4 +1,4 @@
-> **Status: roadmap — mostly not yet implemented.** This document describes the planned product scope; the repository currently implements Phase 2 (settings, platform volumes, filesystem browsing, and native folder picking).
+> **Status: roadmap — partly implemented.** This document describes the planned product scope; the repository currently implements Phases 1–4 (settings, platform volumes, filesystem browsing, the transfer engine, post-transfer verification, crash recovery, and transfer history). Version 2 and later candidates are not started.
 # Feature Specification
 
 Version: 1.0

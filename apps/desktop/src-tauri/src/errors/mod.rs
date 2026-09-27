@@ -44,6 +44,14 @@ pub enum AppError {
     TransferNotFound(String),
     /// A transfer job finished without completing every item.
     TransferFailed(String),
+    /// A destination did not match its source, or could not be checked when the
+    /// configured policy required it.
+    VerificationFailed(String),
+    /// Persisted state could not be written or used, so history or recovery is
+    /// running degraded. The message says what was affected.
+    StateUnavailable(String),
+    /// An interrupted transfer cannot be restarted or discarded as asked.
+    RecoveryUnavailable(String),
     /// An internal operation failed with a contextual message.
     Internal(String),
 }
@@ -63,6 +71,9 @@ impl AppError {
             Self::TooManyItems(_) => "too_many_items",
             Self::TransferNotFound(_) => "transfer_not_found",
             Self::TransferFailed(_) => "transfer_failed",
+            Self::VerificationFailed(_) => "verification_failed",
+            Self::StateUnavailable(_) => "state_unavailable",
+            Self::RecoveryUnavailable(_) => "recovery_unavailable",
             Self::Internal(_) => "internal",
         }
     }
@@ -84,6 +95,13 @@ impl std::fmt::Display for AppError {
             Self::TooManyItems(message) => write!(f, "too many items: {message}"),
             Self::TransferNotFound(message) => write!(f, "transfer not found: {message}"),
             Self::TransferFailed(message) => write!(f, "transfer failed: {message}"),
+            Self::VerificationFailed(message) => {
+                write!(f, "verification failed: {message}")
+            }
+            Self::StateUnavailable(message) => write!(f, "state unavailable: {message}"),
+            Self::RecoveryUnavailable(message) => {
+                write!(f, "recovery unavailable: {message}")
+            }
             Self::Internal(message) => write!(f, "internal error: {message}"),
         }
     }
@@ -120,6 +138,101 @@ impl Serialize for AppError {
 
 /// Convenience alias used by every command signature.
 pub type AppResult<T> = Result<T, AppError>;
+
+/// An error as it is stored on disk and sent across the wire.
+///
+/// `AppError` is deliberately serialize-only: it carries one variant per
+/// failure category, and those variants are a backend implementation detail.
+/// A document stores the two facts a reader can rely on — the stable `code`
+/// and the human-readable `message` — and [`StoredError::to_error`] maps the
+/// code back onto a variant when the backend needs an `AppError` again.
+///
+/// The serialized shape is identical to `AppError`'s, so both can travel in the
+/// same payloads.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StoredError {
+    pub code: String,
+    pub message: String,
+}
+
+impl StoredError {
+    /// Rebuilds a typed error from its stored form.
+    ///
+    /// A stored message is the *rendered* message — the same string the
+    /// frontend displays — so the category's prefix is removed before it is
+    /// handed to the variant, which puts that prefix back when displayed. The
+    /// prefix is obtained by rendering the variant itself, so this cannot drift
+    /// out of step with `Display`.
+    ///
+    /// An unrecognized code becomes [`AppError::Internal`], because a code this
+    /// build does not know is a fact it cannot act on. The message is still
+    /// preserved verbatim in that case.
+    pub fn to_error(&self) -> AppError {
+        let variant = empty_variant(&self.code);
+        let prefix = variant.to_string();
+        let message = match self.message.strip_prefix(&prefix) {
+            Some(message) => message.to_string(),
+            None => self.message.clone(),
+        };
+
+        match variant {
+            AppError::InvalidInput(_) => AppError::InvalidInput(message),
+            AppError::PathNotFound(_) => AppError::PathNotFound(message),
+            AppError::PathNotDirectory(_) => AppError::PathNotDirectory(message),
+            AppError::PermissionDenied(_) => AppError::PermissionDenied(message),
+            AppError::Io(_) => AppError::Io(message),
+            AppError::UnsafeRelationship(_) => AppError::UnsafeRelationship(message),
+            AppError::NotEnoughSpace(_) => AppError::NotEnoughSpace(message),
+            AppError::DiskFull(_) => AppError::DiskFull(message),
+            AppError::TooManyItems(_) => AppError::TooManyItems(message),
+            AppError::TransferNotFound(_) => AppError::TransferNotFound(message),
+            AppError::TransferFailed(_) => AppError::TransferFailed(message),
+            AppError::VerificationFailed(_) => AppError::VerificationFailed(message),
+            AppError::StateUnavailable(_) => AppError::StateUnavailable(message),
+            AppError::RecoveryUnavailable(_) => AppError::RecoveryUnavailable(message),
+            AppError::Internal(_) => AppError::Internal(message),
+        }
+    }
+}
+
+/// The variant a stored `code` names, with an empty message.
+///
+/// Rendering it yields exactly the prefix `Display` adds for that category.
+fn empty_variant(code: &str) -> AppError {
+    match code {
+        "invalid_input" => AppError::InvalidInput(String::new()),
+        "path_not_found" => AppError::PathNotFound(String::new()),
+        "path_not_directory" => AppError::PathNotDirectory(String::new()),
+        "permission_denied" => AppError::PermissionDenied(String::new()),
+        "io" => AppError::Io(String::new()),
+        "unsafe_relationship" => AppError::UnsafeRelationship(String::new()),
+        "not_enough_space" => AppError::NotEnoughSpace(String::new()),
+        "disk_full" => AppError::DiskFull(String::new()),
+        "too_many_items" => AppError::TooManyItems(String::new()),
+        "transfer_not_found" => AppError::TransferNotFound(String::new()),
+        "transfer_failed" => AppError::TransferFailed(String::new()),
+        "verification_failed" => AppError::VerificationFailed(String::new()),
+        "state_unavailable" => AppError::StateUnavailable(String::new()),
+        "recovery_unavailable" => AppError::RecoveryUnavailable(String::new()),
+        _ => AppError::Internal(String::new()),
+    }
+}
+
+impl From<&AppError> for StoredError {
+    fn from(error: &AppError) -> Self {
+        Self {
+            code: error.code().to_string(),
+            message: error.to_string(),
+        }
+    }
+}
+
+impl From<AppError> for StoredError {
+    fn from(error: AppError) -> Self {
+        Self::from(&error)
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -175,6 +288,18 @@ mod tests {
             AppError::TransferFailed("x".into()).code(),
             "transfer_failed"
         );
+        assert_eq!(
+            AppError::VerificationFailed("x".into()).code(),
+            "verification_failed"
+        );
+        assert_eq!(
+            AppError::StateUnavailable("x".into()).code(),
+            "state_unavailable"
+        );
+        assert_eq!(
+            AppError::RecoveryUnavailable("x".into()).code(),
+            "recovery_unavailable"
+        );
         assert_eq!(AppError::Internal("x".into()).code(), "internal");
     }
 
@@ -192,6 +317,9 @@ mod tests {
             AppError::TooManyItems("x".into()),
             AppError::TransferNotFound("x".into()),
             AppError::TransferFailed("x".into()),
+            AppError::VerificationFailed("x".into()),
+            AppError::StateUnavailable("x".into()),
+            AppError::RecoveryUnavailable("x".into()),
             AppError::Internal("x".into()),
         ];
         let mut codes: Vec<&str> = variants.iter().map(AppError::code).collect();
@@ -221,6 +349,55 @@ mod tests {
             "denied",
         ));
         assert_eq!(error.code(), "permission_denied");
+    }
+
+    #[test]
+    fn every_code_round_trips_through_its_stored_form() {
+        for error in [
+            AppError::InvalidInput("x".into()),
+            AppError::PathNotFound("x".into()),
+            AppError::PathNotDirectory("x".into()),
+            AppError::PermissionDenied("x".into()),
+            AppError::Io("x".into()),
+            AppError::UnsafeRelationship("x".into()),
+            AppError::NotEnoughSpace("x".into()),
+            AppError::DiskFull("x".into()),
+            AppError::TooManyItems("x".into()),
+            AppError::TransferNotFound("x".into()),
+            AppError::TransferFailed("x".into()),
+            AppError::VerificationFailed("x".into()),
+            AppError::StateUnavailable("x".into()),
+            AppError::RecoveryUnavailable("x".into()),
+        ] {
+            let stored = StoredError::from(&error);
+            let restored = stored.to_error();
+
+            assert_eq!(restored.code(), error.code(), "the code must survive");
+            assert_eq!(restored.to_string(), error.to_string());
+        }
+    }
+
+    #[test]
+    fn a_stored_error_keeps_a_code_this_build_does_not_know() {
+        let stored = StoredError {
+            code: "future_category".to_string(),
+            message: "something new happened".to_string(),
+        };
+
+        let error = stored.to_error();
+
+        assert_eq!(error.code(), "internal");
+        assert!(error.to_string().contains("something new happened"));
+    }
+
+    #[test]
+    fn a_stored_error_serializes_like_the_error_it_came_from() {
+        let error = AppError::DiskFull("D:\\ is full".to_string());
+
+        assert_eq!(
+            serde_json::to_value(StoredError::from(&error)).expect("stored errors serialize"),
+            serde_json::to_value(&error).expect("errors serialize")
+        );
     }
 
     #[test]

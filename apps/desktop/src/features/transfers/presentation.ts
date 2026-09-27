@@ -22,20 +22,24 @@ import {
   Info,
   Loader,
   PauseCircle,
+  ShieldCheck,
   TriangleAlert,
   XCircle,
 } from "lucide-react";
 
 import { formatBytes } from "@/lib";
 import { type IpcError, toIpcError } from "@/services/ipc";
-import type {
-  ConflictStrategy,
-  TransferIssue,
-  TransferIssueReason,
-  TransferOperation,
-  TransferProgress,
-  TransferSnapshot,
-  TransferStatus,
+import {
+  type ConflictStrategy,
+  type TransferIssue,
+  type TransferIssueReason,
+  type TransferOperation,
+  type TransferProgress,
+  type TransferSnapshot,
+  type TransferStatus,
+  type VerificationStatus,
+  type VerificationSummary,
+  verificationPolicyLabel,
 } from "@/types";
 
 /** Wording for each job status. */
@@ -154,6 +158,86 @@ export function isFinished(snapshot: TransferSnapshot): boolean {
 /** Whether data is moving right now. */
 export function isMoving(snapshot: TransferSnapshot): boolean {
   return snapshot.status === "running" || snapshot.status === "preparing";
+}
+
+/**
+ * Whether the job is checking what it already wrote.
+ *
+ * Verification runs inside an item's own completion, so the job stays
+ * `running` while a file is checked; this is the only thing that tells the two
+ * apart on the surface.
+ */
+export function isVerifying(snapshot: TransferSnapshot): boolean {
+  return (
+    snapshot.status === "running" && snapshot.progress.activity === "verifying"
+  );
+}
+
+/**
+ * What the job's status reads as. A running job that is checking what it wrote
+ * says `Verifying` rather than `Transferring`, because no bytes are moving
+ * while the check runs and the bar must not look like work is in progress.
+ */
+export function transferStatusLabel(snapshot: TransferSnapshot): string {
+  return isVerifying(snapshot)
+    ? "Verifying"
+    : TRANSFER_STATUS_LABELS[snapshot.status];
+}
+
+/** How loud each verification verdict is, keyed by the backend status. */
+export const VERIFICATION_TONES: Record<
+  VerificationStatus,
+  TransferStatusTone
+> = {
+  pending: "neutral",
+  verifying: "active",
+  verified: "success",
+  mismatch: "danger",
+  failed: "danger",
+  skipped: "neutral",
+};
+
+/** Icon for each verification verdict, keyed the same way. */
+export const VERIFICATION_ICONS: Record<VerificationStatus, LucideIcon> = {
+  pending: Clock,
+  verifying: Loader,
+  verified: ShieldCheck,
+  mismatch: TriangleAlert,
+  failed: XCircle,
+  skipped: CircleSlash,
+};
+
+/**
+ * One line stating what was checked, e.g.
+ * `Size verification — verified (size, 2 files, 4096 bytes)`.
+ *
+ * Both halves come from the shared contract modules, so the queue, history,
+ * and settings describe the same run with the same words, and the verdict is
+ * the backend's own sentence rather than something the UI rebuilt from counts.
+ */
+export function verificationLine(summary: VerificationSummary): string {
+  return `${verificationPolicyLabel(summary.policy)} — ${summary.verdict}`;
+}
+
+/**
+ * What the engine did not do, or `null` when everything was preserved.
+ *
+ * Verification reports metadata preservation as an explicit claim, so the
+ * surface says which claims are false instead of letting a green `Verified`
+ * badge imply that times and attributes came along.
+ */
+export function metadataNote(summary: VerificationSummary): string | null {
+  const { modifiedTimePreserved, readonlyPreserved } = summary.coverage;
+  if (!modifiedTimePreserved && !readonlyPreserved) {
+    return "Modified times and read-only attributes are not reapplied.";
+  }
+  if (!modifiedTimePreserved) {
+    return "Modified times are not reapplied.";
+  }
+  if (!readonlyPreserved) {
+    return "Read-only attributes are not reapplied.";
+  }
+  return null;
 }
 
 /** The last segment of a backend path, for display only. */

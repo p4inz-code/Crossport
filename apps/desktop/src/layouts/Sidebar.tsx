@@ -6,11 +6,18 @@
  * ========================================================================== */
 
 import type { LucideIcon } from "lucide-react";
-import { ArrowRightLeft, HardDrive, Home, Settings } from "lucide-react";
+import {
+  ArrowRightLeft,
+  HardDrive,
+  History,
+  Home,
+  Settings,
+  ShieldAlert,
+} from "lucide-react";
 import { NavLink } from "react-router-dom";
 
 import { cn } from "@/lib";
-import { useAppStore } from "@/stores";
+import { useAppStore, useRecoveryStore } from "@/stores";
 import "./Sidebar.css";
 
 interface NavItem {
@@ -19,17 +26,22 @@ interface NavItem {
   icon: LucideIcon;
   /** Whether the link matches only when the path equals `to` exactly. */
   end?: boolean;
+  /** Whether the item carries the interrupted-transfer count. */
+  badge?: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
   { to: "/", label: "Home", icon: Home, end: true },
   { to: "/drives", label: "Drives", icon: HardDrive },
   { to: "/transfers", label: "Transfers", icon: ArrowRightLeft },
+  { to: "/history", label: "History", icon: History },
+  { to: "/recovery", label: "Recovery", icon: ShieldAlert, badge: true },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
 export function Sidebar() {
   const appName = useAppStore((state) => state.name);
+  const interrupted = useRecoveryStore((state) => state.candidates.length);
 
   return (
     <aside className="sidebar">
@@ -55,6 +67,17 @@ export function Sidebar() {
                 >
                   <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
                   <span>{item.label}</span>
+                  {item.badge === true && interrupted > 0 ? (
+                    // The visible count is a digit; the status role gives it a
+                    // name assistive tech can read and a change to announce.
+                    <span
+                      className="sidebar__badge"
+                      role="status"
+                      aria-label={`${interrupted} interrupted transfer${interrupted === 1 ? "" : "s"}`}
+                    >
+                      {interrupted}
+                    </span>
+                  ) : null}
                 </NavLink>
               </li>
             );

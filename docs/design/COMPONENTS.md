@@ -1,4 +1,4 @@
-> **Status: future phase — not yet implemented.** This document describes the planned design for a later phase; the repository currently implements Phase 2 and only the UI primitives listed in `components/ui` plus the feature components under `src/features/`.
+> **Status: partly implemented.** The repository implements Phases 1–4 and only the UI primitives listed in `components/ui` plus the feature components under `src/features/`; everything else in this document is planned design.
 # CrossPort UI Components
 
 Version: 1.0

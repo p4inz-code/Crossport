@@ -18,7 +18,15 @@ import {
 } from "@/components/ui";
 import { PageContainer } from "@/layouts";
 import { useSettingsStore } from "@/stores";
-import { THEME_MODES, type ThemeMode } from "@/types";
+import {
+  MAX_HISTORY_LIMIT,
+  MIN_HISTORY_LIMIT,
+  THEME_MODES,
+  type ThemeMode,
+  VERIFICATION_POLICIES,
+  type VerificationPolicy,
+  verificationPolicyLabel,
+} from "@/types";
 import "./SettingsPage.css";
 
 const THEME_LABELS: Record<ThemeMode, string> = {
@@ -27,14 +35,26 @@ const THEME_LABELS: Record<ThemeMode, string> = {
   system: "System",
 };
 
+/** What each verification policy actually does, in the backend's terms. */
+const VERIFICATION_HINTS: Record<VerificationPolicy, string> = {
+  none: "Nothing is checked. This is only appropriate when verification is impossible.",
+  size: "Every copied file must exist and match the size that was measured. The default.",
+  checksum:
+    "Size checks plus a streaming SHA-256 comparison of the source bytes against the committed file. Strongest, and it costs a hash of every file.",
+};
+
 export function SettingsPage() {
   const theme = useSettingsStore((state) => state.theme);
   const locale = useSettingsStore((state) => state.locale);
   const status = useSettingsStore((state) => state.status);
   const error = useSettingsStore((state) => state.error);
   const saveStatus = useSettingsStore((state) => state.saveStatus);
+  const verification = useSettingsStore((state) => state.verification);
+  const historyLimit = useSettingsStore((state) => state.historyLimit);
   const setTheme = useSettingsStore((state) => state.setTheme);
   const setLocale = useSettingsStore((state) => state.setLocale);
+  const setVerification = useSettingsStore((state) => state.setVerification);
+  const setHistoryLimit = useSettingsStore((state) => state.setHistoryLimit);
 
   // The input is uncontrolled: its value is read on submit and re-keyed from
   // the persisted value, so hydration and rejected saves both stay in sync
@@ -43,6 +63,22 @@ export function SettingsPage() {
     event.preventDefault();
     const submitted = new FormData(event.currentTarget).get("locale");
     setLocale(typeof submitted === "string" ? submitted : "");
+  }
+
+  // The limit is validated by the backend as well; an out-of-range value never
+  // leaves this form, so the user is told immediately instead of after a save.
+  function handleHistoryLimitSubmit(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    const submitted = new FormData(event.currentTarget).get("historyLimit");
+    const parsed = Number.parseInt(
+      typeof submitted === "string" ? submitted : "",
+      10,
+    );
+    if (!Number.isFinite(parsed)) {
+      setHistoryLimit(Number.NaN);
+      return;
+    }
+    setHistoryLimit(parsed);
   }
 
   return (
@@ -98,6 +134,68 @@ export function SettingsPage() {
               />
               <Button type="submit" variant="secondary">
                 Save locale
+              </Button>
+            </form>
+          </CardBody>
+        </Card>
+      </Section>
+
+      <Section title="Verification">
+        <Card>
+          <CardHeader
+            title="How transfers verify what they write"
+            description="Applied to transfers started from now on. A job already queued keeps the policy it was accepted with."
+          />
+          <CardBody>
+            <div className="settings-choices">
+              {VERIFICATION_POLICIES.map((policy) => (
+                <Button
+                  key={policy}
+                  variant={policy === verification ? "primary" : "secondary"}
+                  aria-pressed={policy === verification}
+                  onClick={() => setVerification(policy)}
+                >
+                  {verificationPolicyLabel(policy)}
+                </Button>
+              ))}
+            </div>
+            <p className="settings-note">{VERIFICATION_HINTS[verification]}</p>
+            <p className="settings-note settings-note--muted">
+              Modified times and read-only attributes are not reapplied by this
+              engine, so verification reports them as not preserved rather than
+              claiming they are.
+            </p>
+          </CardBody>
+        </Card>
+      </Section>
+
+      <Section title="History">
+        <Card>
+          <CardHeader
+            title="Retention"
+            description={`How many finished transfers are kept. Between ${MIN_HISTORY_LIMIT} and ${MAX_HISTORY_LIMIT}; shrinking it prunes the oldest records immediately.`}
+          />
+          <CardBody>
+            <form
+              className="settings-field"
+              onSubmit={handleHistoryLimitSubmit}
+            >
+              <label className="settings-field__label" htmlFor="historyLimit">
+                Records kept
+              </label>
+              <input
+                key={historyLimit}
+                id="historyLimit"
+                className="settings-field__input"
+                name="historyLimit"
+                type="number"
+                min={MIN_HISTORY_LIMIT}
+                max={MAX_HISTORY_LIMIT}
+                step={10}
+                defaultValue={historyLimit}
+              />
+              <Button type="submit" variant="secondary">
+                Save limit
               </Button>
             </form>
           </CardBody>

@@ -14,6 +14,10 @@
 use super::*;
 use crate::filesystem::test_support::unique_temp_dir;
 use crate::platform;
+use crate::verification::{
+    ChecksumAlgorithm, VerificationMethod, VerificationMismatchReason, VerificationPolicy,
+    VerificationStatus,
+};
 
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
@@ -177,7 +181,25 @@ fn request_for(
         destination: destination.display().to_string(),
         operation,
         conflict,
+        verification: None,
     }
+}
+
+/// The same request with an explicit verification policy, as the command layer
+/// builds it from the user's setting.
+fn request_verifying(
+    source: &Path,
+    destination: &Path,
+    policy: VerificationPolicy,
+) -> TransferRequest {
+    let mut request = request_for(
+        &[source],
+        destination,
+        TransferOperation::Copy,
+        ConflictStrategy::Skip,
+    );
+    request.verification = Some(policy);
+    request
 }
 
 #[test]
@@ -451,7 +473,11 @@ fn sanity_a_large_file_streams_without_growing_memory() {
 
     let engine = TransferEngine::new(1);
 
-    let baseline = platform::memory_usage_bytes();
+    // Private (committed) bytes, not the working set: reading a 192 MiB file
+    // maps its cache pages into this process's working set, which looks like
+    // growth even when the copy streams through one reused buffer. Commit
+    // charge counts only what this process actually holds.
+    let baseline = platform::private_memory_bytes();
     let sampling = Arc::new(AtomicBool::new(false));
     let peak = match baseline {
         Some(baseline) => {
@@ -462,7 +488,7 @@ fn sanity_a_large_file_streams_without_growing_memory() {
                 std::thread::spawn(move || {
                     let mut peak = baseline;
                     while flag.load(AtomicOrdering::Relaxed) {
-                        if let Some(current) = platform::memory_usage_bytes() {
+                        if let Some(current) = platform::private_memory_bytes() {
                             peak = peak.max(current);
                         }
                         std::thread::sleep(Duration::from_millis(5));
@@ -671,6 +697,128 @@ fn sanity_the_queue_runs_several_jobs_in_order() {
             .expect("readable")
             .len(),
         512 * 1024
+    );
+
+    assert_no_leftovers(&workspace.root);
+    engine.shutdown();
+}
+
+#[test]
+fn sanity_verification_proves_what_it_claims_on_real_files() {
+    let workspace = Workspace::new("sanity-verification");
+    let source = workspace.directory("Data");
+    let small = workspace.file("Data/notes.txt", 4 * 1024);
+    let large = workspace.file("Data/alpha/blob.bin", 96 * 1024);
+    let destination = workspace.directory("out");
+
+    // 1. The default policy: every written file is proven to be there with the
+    //    number of bytes the copy actually streamed out of the source.
+    let engine = TransferEngine::new(1);
+    let job = engine
+        .enqueue_request(request_verifying(
+            &source,
+            &destination,
+            VerificationPolicy::Size,
+        ))
+        .expect("the job is accepted");
+    let finished = wait_for_status(&engine, &job.id, TransferStatus::Completed);
+
+    let verification = &finished.verification;
+    assert_eq!(verification.status, VerificationStatus::Verified);
+    assert_eq!(verification.method, VerificationMethod::Size);
+    assert_eq!(verification.planned_files, 2);
+    assert_eq!(verification.checked_files, 2);
+    assert_eq!(verification.verified_files, 2);
+    assert_eq!(verification.unverified_files, 0);
+    assert_eq!(verification.mismatched_files, 0);
+    assert_eq!(verification.failed_files, 0);
+    assert_eq!(
+        verification.verified_bytes,
+        4 * 1024 + 96 * 1024,
+        "the bytes that passed verification are the bytes that moved"
+    );
+    assert!(verification.mismatches.is_empty());
+    assert!(
+        !verification.coverage.modified_time_preserved && !verification.coverage.readonly_preserved,
+        "this engine does not reapply metadata, and verification says so"
+    );
+    assert_same_tree(&source, &destination.join("Data"));
+
+    // 2. The checksum policy compares the bytes read from the source with the
+    //    file on disk. A copy whose bytes were changed afterwards is caught.
+    let checksum_out = workspace.directory("checksum-out");
+    let checksummed = engine
+        .enqueue_request(request_verifying(
+            &small,
+            &checksum_out,
+            VerificationPolicy::Checksum,
+        ))
+        .expect("the job is accepted");
+    let checksummed = wait_for_status(&engine, &checksummed.id, TransferStatus::Completed);
+    let summary = &checksummed.verification;
+    assert_eq!(summary.status, VerificationStatus::Verified);
+    assert_eq!(summary.method, VerificationMethod::SizeAndChecksum);
+    assert_eq!(summary.checksum_algorithm, Some(ChecksumAlgorithm::Sha256));
+    assert!(summary.coverage.checksum, "a checksum really was compared");
+
+    let copied = checksum_out.join("notes.txt");
+    let expected_bytes = std::fs::metadata(&copied).expect("the copy exists").len();
+    let mut checkpoint = || true;
+    // The digest the copy computed is the digest of the source file, so that is
+    // what is recomputed here rather than invented.
+    let streamed = crate::verification::hash_file(&small, &mut checkpoint)
+        .expect("the source hashes")
+        .digest;
+
+    // Same size, different bytes: exactly what a size check cannot catch.
+    let mut tampered = std::fs::read(&copied).expect("the copy is readable");
+    let last = tampered.len() - 1;
+    tampered[last] ^= 0xff;
+    std::fs::write(&copied, &tampered).expect("the copy is writable");
+
+    let result = crate::verification::verify_item(
+        crate::verification::ItemVerification {
+            source: &small,
+            destination: &copied,
+            expected_bytes,
+            streamed_checksum: Some(streamed),
+        },
+        VerificationPolicy::Checksum,
+        &mut checkpoint,
+    )
+    .expect("the verification is not stopped");
+
+    assert_eq!(
+        result.status,
+        VerificationStatus::Mismatch,
+        "changed bytes of the same size must not verify"
+    );
+    assert_eq!(
+        result.mismatch.as_ref().map(|mismatch| mismatch.reason),
+        Some(VerificationMismatchReason::ChecksumMismatch)
+    );
+    assert_eq!(
+        result.failure_error().code(),
+        "verification_failed",
+        "a mismatch must fail with the code the UI switches on"
+    );
+
+    // 3. A job that did not verify says so rather than claiming success.
+    let unverified_out = workspace.directory("unverified-out");
+    let unverified = engine
+        .enqueue_request(request_verifying(
+            &large,
+            &unverified_out,
+            VerificationPolicy::None,
+        ))
+        .expect("the job is accepted");
+    let none = wait_for_status(&engine, &unverified.id, TransferStatus::Completed);
+    assert_eq!(none.verification.status, VerificationStatus::Skipped);
+    assert_eq!(none.verification.verdict(), "not verified");
+    assert_eq!(none.verification.checked_files, 0);
+    assert!(
+        !none.verification.coverage.size,
+        "nothing about the bytes was checked, so nothing may be claimed"
     );
 
     assert_no_leftovers(&workspace.root);

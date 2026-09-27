@@ -24,6 +24,7 @@ use crate::transfer::model::{
     TransferOperation, TransferPlan, TransferRequest,
 };
 use crate::transfer::safety::{self, SourceKind};
+use crate::verification::VerificationPolicy;
 
 /// Upper bound on the entries one transfer plans. A request larger than this is
 /// refused up front: planning is exhaustive by design (the engine reports exact
@@ -75,6 +76,7 @@ fn plan_with_limit(
         destination,
         operation: request.operation,
         strategy: request.conflict,
+        verification: request.verification_policy(),
         reserved: HashSet::new(),
         items: Vec::new(),
         roots: Vec::new(),
@@ -159,6 +161,9 @@ struct Planner {
     destination: PathBuf,
     operation: TransferOperation,
     strategy: ConflictStrategy,
+    /// Resolved once from the request, so every item in the plan is verified
+    /// the same way.
+    verification: VerificationPolicy,
     /// Destination paths already claimed by this plan, so two sources with the
     /// same name can never be planned onto each other.
     reserved: HashSet<PathBuf>,
@@ -537,6 +542,7 @@ impl Planner {
             destination: self.destination,
             operation: self.operation,
             conflict: self.strategy,
+            verification: self.verification,
             roots: self.roots,
             total_bytes: counted.iter().map(|item| item.size_bytes).sum(),
             total_files: counted.len() as u64,
@@ -668,6 +674,7 @@ mod tests {
             destination: destination.display().to_string(),
             operation: TransferOperation::Copy,
             conflict: ConflictStrategy::Skip,
+            verification: None,
         }
     }
 

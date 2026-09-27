@@ -1,0 +1,103 @@
+/* ==========================================================================
+ * Notification stack
+ * A small, dismissible column in the corner. Colors follow the shared tokens
+ * so a notification reads the same in either theme.
+ * ========================================================================== */
+
+.notification-stack {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(360px, calc(100vw - 40px));
+}
+
+.notification {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: start;
+  padding: 12px 12px 12px 14px;
+  border: 1px solid var(--color-border);
+  border-left-width: 3px;
+  border-radius: 10px;
+  background: var(--color-surface);
+  box-shadow: 0 10px 24px rgb(15 23 42 / 12%);
+}
+
+.notification__icon {
+  margin-top: 2px;
+  color: var(--color-text-muted);
+}
+
+.notification__body {
+  min-width: 0;
+}
+
+.notification__title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.notification__message {
+  margin: 2px 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.notification__dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.notification__dismiss:hover {
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+}
+
+.notification--success {
+  border-left-color: var(--color-success, #16a34a);
+}
+
+.notification--success .notification__icon {
+  color: var(--color-success, #16a34a);
+}
+
+.notification--warning {
+  border-left-color: var(--color-warning, #d97706);
+}
+
+.notification--warning .notification__icon {
+  color: var(--color-warning, #d97706);
+}
+
+.notification--error {
+  border-left-color: var(--color-danger, #dc2626);
+}
+
+.notification--error .notification__icon {
+  color: var(--color-danger, #dc2626);
+}
+
+.notification--info {
+  border-left-color: var(--color-accent, #2563eb);
+}
+
+.notification--info .notification__icon {
+  color: var(--color-accent, #2563eb);
+}

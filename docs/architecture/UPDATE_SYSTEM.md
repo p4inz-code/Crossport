@@ -1,4 +1,4 @@
-> **Status: future phase — not yet implemented.** This document describes the planned design for a later phase; the repository currently implements Phase 2 (settings, platform volumes, filesystem browsing).
+> **Status: future phase — not yet implemented.** This document describes the planned design for a later phase; the repository currently implements Phases 1–4 (settings, platform volumes, filesystem browsing, transfers, verification, recovery, and history).
 # CrossPort Update System
 
 Version: 1.0

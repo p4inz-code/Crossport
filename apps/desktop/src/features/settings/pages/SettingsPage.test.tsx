@@ -51,6 +51,8 @@ describe("SettingsPage", () => {
       expect(mockedUpdate).toHaveBeenCalledWith({
         theme: "dark",
         locale: DEFAULT_SETTINGS.locale,
+        verification: DEFAULT_SETTINGS.verification,
+        historyLimit: DEFAULT_SETTINGS.historyLimit,
       });
     });
     expect(
@@ -70,6 +72,44 @@ describe("SettingsPage", () => {
       expect(mockedUpdate).toHaveBeenCalledWith({
         theme: DEFAULT_SETTINGS.theme,
         locale: "pt-BR",
+        verification: DEFAULT_SETTINGS.verification,
+        historyLimit: DEFAULT_SETTINGS.historyLimit,
+      });
+    });
+  });
+
+  it("applies a verification policy", async () => {
+    render(<SettingsPage />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "SHA-256 verification" }),
+    );
+
+    expect(useSettingsStore.getState().verification).toBe("checksum");
+    await waitFor(() => {
+      expect(mockedUpdate).toHaveBeenCalledWith({
+        theme: DEFAULT_SETTINGS.theme,
+        locale: DEFAULT_SETTINGS.locale,
+        verification: "checksum",
+        historyLimit: DEFAULT_SETTINGS.historyLimit,
+      });
+    });
+  });
+
+  it("applies a history retention limit", async () => {
+    render(<SettingsPage />);
+
+    const input = screen.getByLabelText("Records kept");
+    fireEvent.change(input, { target: { value: "300" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save limit" }));
+
+    expect(useSettingsStore.getState().historyLimit).toBe(300);
+    await waitFor(() => {
+      expect(mockedUpdate).toHaveBeenCalledWith({
+        theme: DEFAULT_SETTINGS.theme,
+        locale: DEFAULT_SETTINGS.locale,
+        verification: DEFAULT_SETTINGS.verification,
+        historyLimit: 300,
       });
     });
   });

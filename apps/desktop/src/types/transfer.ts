@@ -12,9 +12,16 @@
 
 import { z } from "zod";
 
+import {
+  verificationPolicySchema,
+  verificationSummarySchema,
+} from "./verification";
+
 /** What a transfer does with each source. */
 export const TRANSFER_OPERATIONS = ["copy", "move"] as const;
 export type TransferOperation = (typeof TRANSFER_OPERATIONS)[number];
+
+export const transferOperationSchema = z.enum(TRANSFER_OPERATIONS);
 
 /** Lifecycle of one transfer job. */
 export const TRANSFER_STATUSES = [
@@ -33,6 +40,8 @@ export type TransferStatus = (typeof TRANSFER_STATUSES)[number];
 export const CONFLICT_STRATEGIES = ["replace", "skip", "rename"] as const;
 export type ConflictStrategy = (typeof CONFLICT_STRATEGIES)[number];
 
+export const conflictStrategySchema = z.enum(CONFLICT_STRATEGIES);
+
 /** The strategy a transfer uses when the user has not chosen one. */
 export const DEFAULT_CONFLICT_STRATEGY: ConflictStrategy = "skip";
 
@@ -47,6 +56,21 @@ export const TRANSFER_ISSUE_REASONS = [
   "unsupported",
 ] as const;
 export type TransferIssueReason = (typeof TRANSFER_ISSUE_REASONS)[number];
+
+export const transferIssueReasonSchema = z.enum(TRANSFER_ISSUE_REASONS);
+
+/**
+ * What a running job is doing with the file it is on.
+ *
+ * Verification happens inside an item's own completion, so the job status stays
+ * `running` while a file is being checked; this is what lets the surface say
+ * what is happening instead of showing a finished-looking bar over unfinished
+ * verification.
+ */
+export const TRANSFER_ACTIVITIES = ["transferring", "verifying"] as const;
+export type TransferActivity = (typeof TRANSFER_ACTIVITIES)[number];
+
+export const transferActivitySchema = z.enum(TRANSFER_ACTIVITIES);
 
 /**
  * A structured backend failure carried inside a transfer snapshot or issue.
@@ -75,6 +99,12 @@ export const transferRequestSchema = z.object({
   destination: z.string().min(1),
   operation: z.enum(TRANSFER_OPERATIONS),
   conflict: z.enum(CONFLICT_STRATEGIES),
+  /**
+   * How thoroughly to verify what is written. Omitted means the application's
+   * configured policy applies; the UI sends it explicitly so the job runs
+   * under the policy the user saw when they started it.
+   */
+  verification: verificationPolicySchema.optional(),
 });
 
 export type TransferRequest = z.infer<typeof transferRequestSchema>;
@@ -116,6 +146,8 @@ export const transferProgressSchema = z.object({
   averageBytesPerSecond: z.number().int().nonnegative(),
   etaSeconds: z.number().int().nonnegative().nullable(),
   elapsedMs: z.number().int().nonnegative(),
+  /** Whether the job is moving data or checking what it wrote. */
+  activity: transferActivitySchema,
 });
 
 export type TransferProgress = z.infer<typeof transferProgressSchema>;
@@ -130,6 +162,11 @@ export const transferSnapshotSchema = z.object({
   sources: z.array(z.string().min(1)).min(1),
   destination: z.string().min(1),
   progress: transferProgressSchema,
+  /**
+   * The job's verification verdict, updated as files are checked. A job that
+   * did not verify is never presented as a job that worked.
+   */
+  verification: verificationSummarySchema,
   /** Job-level failure. Per-item failures live in `issues`. */
   error: transferErrorSchema.nullable(),
   issues: z.array(transferIssueSchema),

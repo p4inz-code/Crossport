@@ -42,6 +42,9 @@ structured object:
 | `too_many_items` | A transfer covers more entries than the engine will plan (100,000) |
 | `transfer_not_found` | No transfer job with that identifier is known to the engine |
 | `transfer_failed` | A job finished without completing every item |
+| `verification_failed` | A destination did not match its source, or could not be checked when the configured policy required it (the message names the file and what was expected) |
+| `state_unavailable` | Persisted state could not be written or used, so history or recovery is running degraded; the message says what was affected |
+| `recovery_unavailable` | An interrupted transfer cannot be restarted or discarded as asked (unknown identifier, or the archive is missing that job) |
 | `internal` | An internal failure (resolved directory, poisoned lock, dialog failure) |
 
 `std::io::Error` is mapped onto these categories, so callers get the closest
@@ -81,7 +84,20 @@ between the two is a bug: the Rust list is covered by
 - A cancel discards the job's partial output and removes only the directories
   the job created, so an interrupted transfer never leaves a half-written file
   under a real name.
+- A verification mismatch fails that item (and therefore the job) with
+  `verification_failed`, keeping the file it wrote and reporting both sides of
+  the discrepancy. It is never rolled back into a silent success.
+- A damaged history or state document is preserved beside the original, reported
+  as a degraded document by `get_archive_status`, and replaced by defaults, so a
+  corrupt file never shows up as an empty history with no explanation.
+- An interrupted transfer is never restarted automatically: the shell announces
+  it once and the Recovery page waits for Discard, Restart, or Confirm. An
+  action that cannot be carried out fails with `recovery_unavailable` instead of
+  quietly doing nothing.
 - No silent failures anywhere: every failure path logs or surfaces.
+- A notification is raised once per terminal transition (deduplicated by job and
+  event), so a failure that is also visible on the job card is not announced
+  repeatedly in the process.
 
 ## Logging
 

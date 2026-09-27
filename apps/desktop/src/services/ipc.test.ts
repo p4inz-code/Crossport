@@ -41,6 +41,9 @@ describe("error contract", () => {
       "too_many_items",
       "transfer_not_found",
       "transfer_failed",
+      "verification_failed",
+      "state_unavailable",
+      "recovery_unavailable",
       "internal",
     ]);
   });

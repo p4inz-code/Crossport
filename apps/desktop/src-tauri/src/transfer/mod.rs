@@ -36,6 +36,7 @@ use std::sync::{Arc, Condvar, Mutex, MutexGuard, Weak};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use crate::errors::{AppError, AppResult};
+use crate::verification::{FileVerification, VerificationLog, VerificationPolicy};
 use copy::{Abort, JobBridge};
 
 /// Tauri event carrying one [`TransferSnapshot`]. Every state change is
@@ -53,6 +54,14 @@ const PROGRESS_INTERVAL: Duration = Duration::from_millis(120);
 
 /// How long an idle worker or a paused job waits before re-checking.
 const IDLE_POLL: Duration = Duration::from_millis(250);
+
+/// How often a running job's state may be written to durable storage.
+///
+/// Progress is published eight times a second; a durable write is worth far
+/// less often than that, and every write replaces a file. Two seconds bounds
+/// what a crash can lose to a couple of seconds of progress while keeping the
+/// disk quiet during a long transfer.
+const JOURNAL_INTERVAL: Duration = Duration::from_secs(2);
 
 /// Speed is measured over this window, so the reported figure tracks current
 /// throughput instead of an average taken over the whole job.
@@ -74,6 +83,36 @@ pub trait TransferPublisher: Send + Sync {
     fn publish(&self, snapshot: &TransferSnapshot);
 }
 
+/// Where the engine hands durable state.
+///
+/// Like the publisher, this is an outbound port: the engine never opens a file
+/// itself, so it stays testable, and an application without a journal (tests,
+/// headless use) simply does not persist anything.
+///
+/// The contract matters more than the implementation:
+///
+/// - [`TransferJournal::record_live`] is called while a job is queued, running,
+///   paused, or cancelling, so a crash leaves a record of work in flight. It may
+///   be called again and again with newer state, and implementations must treat
+///   each call as a replacement rather than an addition.
+/// - [`TransferJournal::record_finished`] is called exactly once, after a job
+///   reaches a terminal state, and it is called *before* the state it recorded
+///   live is forgotten — so an interrupted-job record can never claim a job was
+///   unfinished once its result is on disk.
+/// - [`TransferJournal::forget`] releases the live state of a job that no longer
+///   exists, and must never remove a finished record.
+///
+/// Implementations must not block for long: these calls happen on the worker
+/// thread that is moving the data.
+pub trait TransferJournal: Send + Sync {
+    /// Records the current state of a job that has not finished.
+    fn record_live(&self, snapshot: &TransferSnapshot);
+    /// Records the final state of a job.
+    fn record_finished(&self, snapshot: &TransferSnapshot);
+    /// Releases the live state of a job that is gone.
+    fn forget(&self, job_id: &str);
+}
+
 /// The transfer queue and its workers.
 ///
 /// Cheap to clone: clones share one engine, which is what the command layer
@@ -91,6 +130,9 @@ struct EngineInner {
     /// tests and in any context without a frontend, where publishing is a
     /// no-op instead of a failure.
     publisher: Mutex<Option<Arc<dyn TransferPublisher>>>,
+    /// Set once durable storage is available. Absent in tests, where a job
+    /// simply is not recorded anywhere.
+    journal: Mutex<Option<Arc<dyn TransferJournal>>>,
     shutdown: AtomicBool,
     max_active: usize,
 }
@@ -127,9 +169,37 @@ struct JobSlot {
     resume_signal: Condvar,
 }
 
+/// Everything a job's runtime starts as, so a job can be created without
+/// listing every field and the tests can describe only what they care about.
+impl Default for JobRuntime {
+    fn default() -> Self {
+        Self {
+            status: TransferStatus::Queued,
+            counters: TransferCounters::default(),
+            activity: TransferActivity::Transferring,
+            verification: VerificationLog::default(),
+            error: None,
+            issues: Vec::new(),
+            issues_truncated: false,
+            started_ms: None,
+            finished_ms: None,
+            started_at: None,
+            finished_instant: None,
+            paused_at: None,
+            paused_total: Duration::ZERO,
+            last_emit: None,
+            last_journal: None,
+            samples: VecDeque::new(),
+        }
+    }
+}
+
 struct JobRuntime {
     status: TransferStatus,
     counters: TransferCounters,
+    /// Whether the job is moving or checking the file it is on.
+    activity: TransferActivity,
+    verification: VerificationLog,
     error: Option<AppError>,
     issues: Vec<TransferIssue>,
     issues_truncated: bool,
@@ -141,6 +211,10 @@ struct JobRuntime {
     /// Total time spent paused, so speed and ETA are never diluted by it.
     paused_total: Duration,
     last_emit: Option<Instant>,
+    /// Last time live state was written to the journal. Separate from
+    /// [`JobRuntime::last_emit`] because progress is published far more often
+    /// than a durable write is worth.
+    last_journal: Option<Instant>,
     /// Recent (time, bytes) samples used for the current speed.
     samples: VecDeque<(Instant, u64)>,
 }
@@ -157,6 +231,7 @@ impl TransferEngine {
             }),
             wake: Condvar::new(),
             publisher: Mutex::new(None),
+            journal: Mutex::new(None),
             shutdown: AtomicBool::new(false),
             max_active,
         });
@@ -177,6 +252,20 @@ impl TransferEngine {
     /// no-op.
     pub fn attach(&self, publisher: Arc<dyn TransferPublisher>) {
         *lock(&self.inner.publisher) = Some(publisher);
+    }
+
+    /// Installs the durable-state sink. Called once during application setup;
+    /// without one, jobs live and die entirely in memory.
+    pub fn attach_journal(&self, journal: Arc<dyn TransferJournal>) {
+        *lock(&self.inner.journal) = Some(journal);
+    }
+
+    /// What the engine will verify with when a request does not say.
+    ///
+    /// The setting is read at the command boundary and folded into the request,
+    /// so this is only the fallback the engine itself honours.
+    pub fn default_verification_policy(&self) -> VerificationPolicy {
+        VerificationPolicy::default()
     }
 
     /// Plans a request and queues it, rejecting anything unsafe before it
@@ -206,24 +295,20 @@ impl TransferEngine {
             id,
             queued_at_ms: now_ms(),
             runtime: Mutex::new(JobRuntime {
-                status: TransferStatus::Queued,
                 counters: TransferCounters {
                     total_bytes: plan.total_bytes,
                     total_files: plan.total_files,
                     total_directories: plan.total_directories,
                     ..TransferCounters::default()
                 },
-                error: None,
-                issues: Vec::new(),
-                issues_truncated: false,
-                started_ms: None,
-                finished_ms: None,
-                started_at: None,
-                finished_instant: None,
-                paused_at: None,
-                paused_total: Duration::ZERO,
-                last_emit: None,
-                samples: VecDeque::new(),
+                // The plan already carries the policy, and the log counts the
+                // files the plan intends to verify.
+                verification: {
+                    let mut log = VerificationLog::new(plan.verification);
+                    log.set_planned_files(plan.total_files);
+                    log
+                },
+                ..JobRuntime::default()
             }),
             pause_requested: AtomicBool::new(false),
             cancel_requested: AtomicBool::new(false),
@@ -231,11 +316,21 @@ impl TransferEngine {
             plan,
         });
 
+        // A job that is queued but not yet claimed is still work in flight: a
+        // crash before it starts must leave a record of it. The record is
+        // written *before* the job becomes claimable, so this write can never
+        // land after the job has already finished and been cleared — which
+        // would leave a finished job looking interrupted after a restart.
+        // The queue lock is held across the write to keep that ordering exact;
+        // it is one small document per accepted request.
+        let snapshot = snapshot_of(&slot);
+        self.inner.journal_live(&snapshot);
+
         state.jobs.push(Arc::clone(&slot));
         drop(state);
 
         self.inner.wake.notify_all();
-        Ok(snapshot_of(&slot))
+        Ok(snapshot)
     }
 
     /// Every job in queue order.
@@ -382,17 +477,37 @@ impl TransferEngine {
         }
 
         state.jobs.retain(|job| job.id != id);
+        drop(state);
+
+        // The finished record stays; only the live state is released.
+        self.inner.journal_forget(id);
         Ok(())
     }
 
     /// Drops every finished job. Live jobs are never touched.
     pub fn clear_finished(&self) -> usize {
-        let mut state = lock(&self.inner.state);
-        let before = state.jobs.len();
-        state
-            .jobs
-            .retain(|job| !lock(&job.runtime).status.is_terminal());
-        before - state.jobs.len()
+        // Which jobs disappeared is decided under the queue lock, so the answer
+        // and the removal cannot disagree. Their live state is released after
+        // the lock is dropped, because a journal write is not something the
+        // queue lock should be held across.
+        let cleared: Vec<String> = {
+            let mut state = lock(&self.inner.state);
+            let before: Vec<String> = state.jobs.iter().map(|job| job.id.clone()).collect();
+            state
+                .jobs
+                .retain(|job| !lock(&job.runtime).status.is_terminal());
+            let remaining: std::collections::HashSet<&String> =
+                state.jobs.iter().map(|job| &job.id).collect();
+            before
+                .into_iter()
+                .filter(|id| !remaining.contains(id))
+                .collect()
+        };
+
+        for id in &cleared {
+            self.inner.journal_forget(id);
+        }
+        cleared.len()
     }
 
     /// Stops accepting work and releases the workers.
@@ -443,6 +558,42 @@ impl EngineInner {
             publisher.publish(snapshot);
         }
     }
+
+    /// Records a live job. A journal failure is logged, never fatal: losing the
+    /// ability to recover a job is not a reason to stop moving the data.
+    fn journal_live(&self, snapshot: &TransferSnapshot) {
+        let journal = lock(&self.journal).clone();
+        if let Some(journal) = journal {
+            journal.record_live(snapshot);
+        }
+    }
+
+    /// Records a finished job. Called before the job's live state is released.
+    fn journal_finished(&self, snapshot: &TransferSnapshot) {
+        let journal = lock(&self.journal).clone();
+        if let Some(journal) = journal {
+            journal.record_finished(snapshot);
+        }
+    }
+
+    fn journal_forget(&self, job_id: &str) {
+        let journal = lock(&self.journal).clone();
+        if let Some(journal) = journal {
+            journal.forget(job_id);
+        }
+    }
+
+    /// Whether enough time has passed to write live state again. `true` the
+    /// first time, so a job's first progress is always durable.
+    fn journal_due(runtime: &mut JobRuntime, now: Instant) -> bool {
+        let due = runtime.last_journal.map_or(true, |last| {
+            now.saturating_duration_since(last) >= JOURNAL_INTERVAL
+        });
+        if due {
+            runtime.last_journal = Some(now);
+        }
+        due
+    }
 }
 
 /// What the execution layer asks of the job it belongs to.
@@ -456,9 +607,12 @@ impl TransferContext {
         {
             let mut runtime = lock(&self.slot.runtime);
             runtime.status = TransferStatus::Running;
+            runtime.activity = TransferActivity::Transferring;
             runtime.started_at = Some(Instant::now());
             runtime.started_ms = Some(now_ms());
             runtime.last_emit = None;
+            // A job that has just started is durable immediately.
+            runtime.last_journal = None;
         }
         self.emit_now();
     }
@@ -471,6 +625,8 @@ impl TransferContext {
             runtime.counters.current_file = None;
             runtime.counters.current_file_bytes = 0;
             runtime.counters.current_file_total_bytes = 0;
+            runtime.activity = TransferActivity::Transferring;
+            runtime.verification.finish();
 
             match result {
                 Ok(()) => {
@@ -487,15 +643,39 @@ impl TransferContext {
                 }
             }
 
+            // A job whose verification did not hold is not a job that worked,
+            // no matter how many bytes moved. The item failures already fail
+            // the job; this is the job-level statement of why.
+            if runtime.status == TransferStatus::Completed && runtime.verification.has_failures() {
+                runtime.status = TransferStatus::Failed;
+            }
+
             if runtime.status == TransferStatus::Failed && runtime.error.is_none() {
-                runtime.error = Some(AppError::TransferFailed(format!(
-                    "{} of {} items did not transfer",
-                    runtime.counters.failed_items,
-                    runtime
-                        .counters
-                        .total_files
-                        .saturating_add(runtime.counters.total_directories)
-                )));
+                let verification = runtime.verification.summary(true);
+                runtime.error = Some(if verification.status.is_failure() {
+                    AppError::VerificationFailed(format!(
+                        "{} of {} files did not verify ({}); {} of {} items did not transfer",
+                        verification
+                            .mismatched_files
+                            .saturating_add(verification.failed_files),
+                        verification.planned_files,
+                        verification.verdict(),
+                        runtime.counters.failed_items,
+                        runtime
+                            .counters
+                            .total_files
+                            .saturating_add(runtime.counters.total_directories)
+                    ))
+                } else {
+                    AppError::TransferFailed(format!(
+                        "{} of {} items did not transfer",
+                        runtime.counters.failed_items,
+                        runtime
+                            .counters
+                            .total_files
+                            .saturating_add(runtime.counters.total_directories)
+                    ))
+                });
             }
         }
 
@@ -504,6 +684,11 @@ impl TransferContext {
             state.active.remove(&self.slot.id);
         }
 
+        // The finished record is written before anything is published, so a
+        // crash between the two can never make a finished job look unfinished,
+        // and a client that reacts to the completion event cannot observe a job
+        // that finished but is not yet in history.
+        self.journal_finished();
         self.emit_now();
         self.inner.wake.notify_all();
     }
@@ -548,6 +733,7 @@ impl TransferContext {
             snapshot_locked(&self.slot, &runtime, now)
         };
         self.inner.emit(&snapshot);
+        self.journal_live();
     }
 
     /// Publishes immediately: used for state changes and failures, where
@@ -561,6 +747,35 @@ impl TransferContext {
             snapshot_locked(&self.slot, &runtime, now)
         };
         self.inner.emit(&snapshot);
+        self.journal_live();
+    }
+
+    /// Writes the job's live state to durable storage if the cadence allows.
+    ///
+    /// Skipped for terminal jobs: their record is written once by
+    /// [`TransferContext::finish`], and rewriting it as "live" afterwards would
+    /// be the one thing recovery must never see.
+    fn journal_live(&self) {
+        let now = Instant::now();
+        let snapshot = {
+            let mut runtime = lock(&self.slot.runtime);
+            if runtime.status.is_terminal() || !EngineInner::journal_due(&mut runtime, now) {
+                return;
+            }
+            snapshot_locked(&self.slot, &runtime, now)
+        };
+        self.inner.journal_live(&snapshot);
+    }
+
+    /// Writes the job's final state, once.
+    fn journal_finished(&self) {
+        let now = Instant::now();
+        let snapshot = {
+            let mut runtime = lock(&self.slot.runtime);
+            runtime.finished_instant.get_or_insert(now);
+            snapshot_locked(&self.slot, &runtime, now)
+        };
+        self.inner.journal_finished(&snapshot);
     }
 }
 
@@ -571,6 +786,24 @@ impl JobBridge for TransferContext {
 
     fn checkpoint(&self) -> Result<(), Abort> {
         self.wait_while_paused()
+    }
+
+    fn item_verifying(&self, item: &TransferItem) {
+        {
+            let mut runtime = lock(&self.slot.runtime);
+            runtime.activity = TransferActivity::Verifying;
+            runtime.counters.current_file = Some(item.destination.display().to_string());
+        }
+        self.touch();
+    }
+
+    fn item_verified(&self, verification: &FileVerification) {
+        {
+            let mut runtime = lock(&self.slot.runtime);
+            runtime.activity = TransferActivity::Transferring;
+            runtime.verification.record(verification);
+        }
+        self.touch();
     }
 
     fn item_started(&self, item: &TransferItem) {
@@ -834,6 +1067,7 @@ fn snapshot_locked(slot: &JobSlot, runtime: &JobRuntime, now: Instant) -> Transf
         operation: slot.plan.operation,
         conflict: slot.plan.conflict,
         status: runtime.status,
+        verification: runtime.verification.summary(runtime.status.is_terminal()),
         sources: slot
             .plan
             .roots
@@ -841,7 +1075,9 @@ fn snapshot_locked(slot: &JobSlot, runtime: &JobRuntime, now: Instant) -> Transf
             .map(|root| root.source.display().to_string())
             .collect(),
         destination: slot.plan.destination.display().to_string(),
-        progress: runtime.counters.to_progress(timing_of(runtime, now)),
+        progress: runtime
+            .counters
+            .to_progress(timing_of(runtime, now), runtime.activity),
         error: runtime.error.clone(),
         issues: runtime.issues.clone(),
         issues_truncated: runtime.issues_truncated,

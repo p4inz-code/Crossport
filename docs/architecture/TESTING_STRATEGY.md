@@ -1,6 +1,6 @@
 # Testing Strategy
 
-Version: 2.0
+Version: 3.0
 Status: Approved
 
 ## Principles
@@ -30,7 +30,11 @@ Status: Approved
 | `stores/transfer-store` | Queue loading and ordering, snapshot merging by identifier, control calls and their failures, dismissals that ignore late events, clearing finished jobs, following the event feed |
 | `types/*` | Schema acceptance and rejection per rule |
 | `lib/*` | Formatters and class composition |
-| `features/**/*.test.tsx` | Volume metadata rendering, capacity meters, entry tables, navigation controls, multi-select and transfer actions, the loading/empty/error states of the drives page and the settings page, the transfer composer's dry run and conflict strategies, and the queue surface's progress, issues, and controls |
+| `services/history-service`, `services/recovery-service` | Command payloads, filters, contract rejection, structured failures |
+| `stores/history-store`, `stores/recovery-store` | Listing and filtering, selection, degraded documents, recovery decisions and their failures |
+| `stores/notification-store` | Bounded, deduplicated notifications raised once per event |
+| `hooks/useRecoveryFeed`, `hooks/useTransferNotifications` | Startup recovery notice and terminal-transition announcements |
+| `features/**/*.test.tsx` | Volume metadata rendering, capacity meters, entry tables, navigation controls, multi-select and transfer actions, the loading/empty/error states of the drives page and the settings page, the transfer composer's dry run and conflict strategies, the queue surface's progress, issues, verification verdict, and controls, the history list / filters / details, the recovery page's outcomes and actions, and the notification stack |
 
 Run with `pnpm test` (or `pnpm --filter desktop test`).
 
@@ -55,7 +59,13 @@ Run with `pnpm test` (or `pnpm --filter desktop test`).
 | `transfer::conflict` | Collision detection, rename candidates, exhaustion |
 | `transfer::copy` | Streaming with a bounded buffer, temp-file commits, move semantics, failure isolation |
 | `transfer` (engine) | Queue order, one active job at a time, pause/resume/cancel on queued and running jobs, prune rules, concurrent control calls, progress accounting, throttled snapshots |
-| `transfer::sanity` | Real end-to-end runs on disk: nested tree copy, move, all three conflict strategies, pause/resume/cancel cleanliness, a 192 MiB file streamed under a memory ceiling, unsafe requests leaving the disk untouched, queue order |
+| `verification` | Policy-to-method mapping, status transitions, every mismatch reason, a checksum that cannot be compared being a failure, links at the destination, coverage claims, verdict wording, cancellation during a check |
+| `persistence` | Atomic writes, missing/corrupt/newer documents, preservation of a corrupt file, older-schema migration, unique temporary names |
+| `history` | Record ordering, retention and pruning, filters, update/delete/clear, corrupt documents, validation |
+| `recovery` | Classification of all five outcomes, illegal action identifiers, exact artifact matching, state bounds, write-and-reload |
+| `archive` | Journaling during a job, history written before state is forgotten, restart / discard / confirm end to end against a real directory, revised records instead of duplicates |
+| `transfer::tests` (verification) | The policy in the engine's copy path: `size` verified, `checksum` with recorded digests, `none` reported as skipped rather than verified |
+| `transfer::sanity` | Real end-to-end runs on disk: nested tree copy, move, all three conflict strategies, pause/resume/cancel cleanliness, a 192 MiB file streamed under a memory ceiling, unsafe requests leaving the disk untouched, queue order, and verification of a real tree under `size`, `checksum` (including a tampered copy being caught), and `none` |
 
 Run with `cargo test` in `apps/desktop/src-tauri`.
 

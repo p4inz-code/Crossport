@@ -8,6 +8,8 @@
 pub mod dialog;
 pub mod drives;
 pub mod filesystem;
+pub mod history;
+pub mod recovery;
 pub mod settings;
 pub mod system;
 pub mod transfer;

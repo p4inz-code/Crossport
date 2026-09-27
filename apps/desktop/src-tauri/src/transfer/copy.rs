@@ -32,6 +32,9 @@ use crate::transfer::model::{
     TransferOperation, TransferPlan,
 };
 use crate::transfer::safety;
+use crate::verification::{
+    self, FileVerification, StreamHasher, VerificationAborted, VerificationPolicy,
+};
 
 /// Size of the buffer one transfer streams through.
 ///
@@ -73,6 +76,11 @@ pub(crate) trait JobBridge: Send + Sync {
     fn item_started(&self, item: &TransferItem);
     /// Bytes were written to the destination.
     fn record_bytes(&self, bytes: u64);
+    /// Verification of one item is about to start, so the job can say what it
+    /// is doing while its bytes are being checked.
+    fn item_verifying(&self, item: &TransferItem);
+    /// One item's verification result.
+    fn item_verified(&self, verification: &FileVerification);
     /// An item finished successfully.
     fn item_completed(&self, item: &TransferItem);
     /// An item was left alone by the plan.
@@ -114,6 +122,7 @@ fn stream_copy<R: Read, W: Write, O: CopyObserver>(
     writer: &mut W,
     buffer: &mut [u8],
     observer: &mut O,
+    mut hasher: Option<&mut StreamHasher>,
 ) -> Result<CopyOutcome, StreamError> {
     let mut bytes: u64 = 0;
 
@@ -139,6 +148,14 @@ fn stream_copy<R: Read, W: Write, O: CopyObserver>(
         writer
             .write_all(&buffer[..read])
             .map_err(StreamError::Write)?;
+
+        // The hash is of the bytes that were read from the source, fed as they
+        // pass through. Verifying a source therefore costs no second read of
+        // it, which is the difference between a checksum policy that is usable
+        // and one that doubles every transfer's read cost.
+        if let Some(hasher) = hasher.as_deref_mut() {
+            hasher.update(&buffer[..read]);
+        }
 
         bytes = bytes
             .checked_add(read as u64)
@@ -343,10 +360,18 @@ fn transfer_file(
     let temp_path = partial_path(job.job_id(), item_index, &item.destination);
     let mut partial = PartialFile::create(&temp_path)?;
 
+    // Only a checksum policy pays for a source digest, and it is computed from
+    // the bytes that are already flowing past rather than by reading the source
+    // again.
+    let mut hasher = plan
+        .verification
+        .algorithm()
+        .map(|_algorithm| StreamHasher::new());
+
     let copied = {
         let writer = partial.writer()?;
         let mut observer = JobObserver { job };
-        match stream_copy(&mut reader, writer, buffer, &mut observer) {
+        match stream_copy(&mut reader, writer, buffer, &mut observer, hasher.as_mut()) {
             Ok(outcome) if !outcome.aborted => outcome,
             // The observer stopped the copy: that is a cancellation, and the
             // temporary file is removed when `partial` goes out of scope.
@@ -380,7 +405,68 @@ fn transfer_file(
         .map_err(|error| Abort::Failed(safety::write_error(error, &destination)))?;
     partial.disarm();
 
+    // Verification happens on the committed file, so what is checked is what a
+    // user would open. The expected size is the number of bytes that actually
+    // came out of the source, which is the only figure this transfer can prove.
+    verify_committed(plan, job, item, &destination, copied.bytes, hasher, partial)?;
+
     Ok(())
+}
+
+/// Verifies one committed file and reports the result to the job.
+///
+/// A result that means the data did not arrive is turned into an item failure
+/// here. The file is left in place: removing it would destroy something the
+/// user can inspect, and the job's failure already says the copy is not
+/// trustworthy.
+fn verify_committed(
+    plan: &TransferPlan,
+    job: &dyn JobBridge,
+    item: &TransferItem,
+    destination: &Path,
+    written_bytes: u64,
+    hasher: Option<StreamHasher>,
+    partial: PartialFile,
+) -> Result<(), Abort> {
+    // Nothing to check when the policy is off, but the fact that nothing was
+    // checked is recorded rather than left implicit.
+    if plan.verification == VerificationPolicy::None {
+        job.item_verified(&verification::FileVerification::skipped(destination));
+        drop(partial);
+        return Ok(());
+    }
+
+    job.item_verifying(item);
+
+    let streamed_checksum = hasher.map(StreamHasher::finish);
+    // The temporary file is gone by now (it became the destination), so
+    // dropping it here cannot remove the committed file.
+    drop(partial);
+
+    let mut checkpoint = || job.checkpoint().is_ok();
+    let result = verification::verify_item(
+        verification::ItemVerification {
+            source: &item.source,
+            destination,
+            expected_bytes: written_bytes,
+            streamed_checksum,
+        },
+        plan.verification,
+        &mut checkpoint,
+    );
+
+    match result {
+        Ok(result) => {
+            job.item_verified(&result);
+            if result.status.is_failure() {
+                return Err(Abort::Failed(result.failure_error()));
+            }
+            Ok(())
+        }
+        // The checkpoint stopped the verification: that is a cancellation, and
+        // the item must not be reported as completed.
+        Err(VerificationAborted) => Err(Abort::Cancelled),
+    }
 }
 
 /// The path the completed file is renamed onto.
@@ -512,6 +598,10 @@ mod tests {
         failed: Vec<(String, AppError)>,
         moved: Vec<String>,
         retained: Vec<String>,
+        /// How many times verification was announced.
+        verifying: usize,
+        /// The status of every verification result reported, in order.
+        verifications: Vec<String>,
     }
 
     impl TestJob {
@@ -538,6 +628,8 @@ mod tests {
                 skipped: state.skipped.clone(),
                 failed: state.failed.clone(),
                 moved: state.moved.clone(),
+                verifying: state.verifying,
+                verifications: state.verifications.clone(),
                 retained: state.retained.clone(),
             }
         }
@@ -567,6 +659,17 @@ mod tests {
         fn record_bytes(&self, bytes: u64) {
             let mut state = lock(&self.state);
             state.bytes = state.bytes.saturating_add(bytes);
+        }
+
+        fn item_verifying(&self, _item: &TransferItem) {
+            let mut state = lock(&self.state);
+            state.verifying = state.verifying.saturating_add(1);
+        }
+
+        fn item_verified(&self, verification: &FileVerification) {
+            lock(&self.state)
+                .verifications
+                .push(verification.status.as_str().to_string());
         }
 
         fn item_completed(&self, item: &TransferItem) {
@@ -692,6 +795,7 @@ mod tests {
             destination: destination.display().to_string(),
             operation,
             conflict,
+            verification: None,
         }
     }
 
@@ -722,7 +826,7 @@ mod tests {
         let mut buffer = vec![0u8; 64 * 1024];
         let mut recorder = Recorder::default();
 
-        let outcome = stream_copy(&mut source, &mut writer, &mut buffer, &mut recorder)
+        let outcome = stream_copy(&mut source, &mut writer, &mut buffer, &mut recorder, None)
             .expect("the copy succeeds");
 
         assert_eq!(outcome.bytes, 64 * 1024 * 1024);
@@ -758,7 +862,7 @@ mod tests {
             stops_after: Some(2),
         };
 
-        let outcome = stream_copy(&mut source, &mut writer, &mut buffer, &mut recorder)
+        let outcome = stream_copy(&mut source, &mut writer, &mut buffer, &mut recorder, None)
             .expect("the copy stops cleanly");
 
         assert!(outcome.aborted, "the caller is told nothing was committed");
@@ -779,7 +883,7 @@ mod tests {
         let mut buffer = vec![0u8; 1024];
         let mut recorder = Recorder::default();
 
-        let error = stream_copy(&mut source, &mut writer, &mut buffer, &mut recorder)
+        let error = stream_copy(&mut source, &mut writer, &mut buffer, &mut recorder, None)
             .expect_err("the write failure is reported");
 
         assert!(

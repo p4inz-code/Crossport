@@ -24,13 +24,34 @@ second source of truth.
 
 - `theme`: `"light" | "dark" | "system"` (validated by zod and by Rust)
 - `locale`: 2–16 characters
+- `verification`: `"none" | "size" | "checksum"` — how thoroughly a new transfer
+  verifies what it writes. Default `size`; see
+  `docs/architecture/VERIFICATION.md`
+- `historyLimit`: integer 20–2000 — how many finished transfers history keeps
+  (`DEFAULT_HISTORY_LIMIT` 200, `MIN_HISTORY_LIMIT` 20, `MAX_HISTORY_LIMIT`
+  2000). The same three constants live in `history/mod.rs` and in
+  `src/types/settings.ts`
 
 Both sides enforce the same rules; the Rust side is authoritative.
+
+## When a setting takes effect
+
+`verification` is **folded into a job's request** when it is planned or started,
+so a queued or running job keeps the policy it was shown at the time. Changing
+the setting affects the next job, never one already accepted — and history
+records the policy a job actually ran under.
+
+`historyLimit` applies immediately: `update_settings` propagates it to the open
+archive, which prunes the oldest records down to the new limit, writes the
+trimmed list, and reports how many records were removed. A history document that
+is read-only (written by a newer schema) or degraded is left untouched rather
+than replaced, and the new limit still governs what happens in memory.
 
 ## Command surface
 
 - `get_settings` → `AppSettings`
-- `update_settings(AppSettings)` → `()` (validates, persists, updates state)
+- `update_settings(AppSettings)` → `()` (validates, persists, updates state, and
+  applies the history retention limit to the open archive)
 
 Errors are returned as `{ code, message }` and normalized to `IpcError` in the
 frontend; see `docs/architecture/ERROR_HANDLING.md`.

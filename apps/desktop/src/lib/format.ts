@@ -33,3 +33,35 @@ export function formatDateTime(milliseconds: number | null): string {
   }
   return new Date(milliseconds).toLocaleString();
 }
+
+/**
+ * Formats a backend duration for display, e.g. `135000` → `2m 15s`.
+ *
+ * Sub-second work is reported in milliseconds rather than rounded to `0s`, and
+ * a missing or negative duration is `Unknown` instead of a fabricated zero.
+ */
+export function formatDuration(milliseconds: number | null): string {
+  if (
+    milliseconds === null ||
+    !Number.isFinite(milliseconds) ||
+    milliseconds < 0
+  ) {
+    return "Unknown";
+  }
+  if (milliseconds < 1000) {
+    return `${Math.round(milliseconds)}ms`;
+  }
+
+  const totalSeconds = Math.round(milliseconds / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`;
+  }
+  return `${seconds}s`;
+}

@@ -8,7 +8,11 @@
 import type { ReactNode } from "react";
 import { useEffect } from "react";
 
-import { useTransferFeed } from "@/hooks";
+import {
+  useRecoveryFeed,
+  useTransferFeed,
+  useTransferNotifications,
+} from "@/hooks";
 import { useSettingsStore, useSystemStore } from "@/stores";
 
 interface StoreProviderProps {
@@ -27,6 +31,10 @@ export function StoreProvider({ children }: StoreProviderProps) {
   // A transfer keeps running while the user is elsewhere in the app, so the
   // queue is fed from the shell rather than from one page.
   useTransferFeed();
+  // Finished transfers speak up once each, wherever the user is, and what was
+  // interrupted is checked once at startup — never acted on.
+  useTransferNotifications();
+  useRecoveryFeed();
 
   return <>{children}</>;
 }

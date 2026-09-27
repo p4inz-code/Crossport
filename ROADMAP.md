@@ -43,16 +43,48 @@ the engineering phases.
 - [x] Safety rules: no transfer into itself, no destination inside its source,
       no symlink following, free-space checks before a copy
 
-What Phase 3 deliberately does not do is in
-`docs/architecture/TRANSFER_ENGINE.md` — byte-count rounding is the only
-verification, jobs live in memory, and metadata is not reapplied.
+Phase 3 shipped without verification, persisted state, or history; Phase 4 added
+all three. What the engine deliberately does not do is in
+`docs/architecture/TRANSFER_ENGINE.md`.
 
-## Phase 4 — Verification & polish
+## Phase 4 — Verification, recovery, and history (complete)
 
-- [ ] Optional post-transfer verification (size, metadata, checksum)
-- [ ] Crash recovery: resuming an interrupted transfer from persisted state
-- [ ] Transfer history persistence and retention policy
-- [ ] Notifications and error journeys per `docs/architecture/ERROR_HANDLING.md`
+- [x] Post-transfer verification with three policies: size (default), SHA-256
+      checksum, or none. Checksums compare the digest of the bytes read from the
+      source against the file on disk; a mismatch fails its item, keeps the file
+      it wrote, and says what was expected and what was found
+- [x] Honest reporting: what was checked, what was not, and what the engine did
+      not reapply (modified times and read-only attributes) travel with every
+      verdict instead of being implied by a green badge
+- [x] Durable documents: versioned, atomically written state and history, with
+      damaged files preserved beside the original and a newer schema refused
+      rather than overwritten
+- [x] Crash recovery: live job state journaled while a job runs, interrupted
+      jobs classified into five explicit outcomes, and restart / discard /
+      confirm as the user's decision — never automatic
+- [x] Transfer history persistence, per-record verification verdicts, filters,
+      retention by count, and a details view
+- [x] Recovery and history UI: a Recovery page with what a restart would do,
+      a History page with status, sizes, durations, and verdicts, and sidebar
+      counts for jobs awaiting a decision
+- [x] Notifications for finished, failed, verification-failed, skipped, and
+      interrupted transfers, plus recovery and history error journeys in
+      `docs/architecture/ERROR_HANDLING.md`
+- [x] Settings for verification policy and history retention, folded into a job
+      when it is planned so a later change cannot alter queued work
+- [x] Test coverage for the new modules on both sides, plus on-disk sanity runs
+
+What Phase 4 deliberately does not do is in `docs/architecture/VERIFICATION.md`,
+`docs/architecture/RECOVERY.md`, and `docs/architecture/PERSISTENCE.md`:
+byte-offset resume of a partial file is refused, verification proves only the
+claims it lists, metadata is still not reapplied, and history is a bounded,
+pruned list rather than an audit log.
+
+## Phase 5 — Version 2 candidates
+
+Not started. Candidates from `docs/product/FEATURE_SPECIFICATION.md`: folder
+synchronization, watched folders, batch operations, keyboard shortcuts, and
+advanced transfer rules.
 
 See `docs/product/FEATURE_SPECIFICATION.md` for the full feature breakdown
 through the 2030 roadmap.
