@@ -23,13 +23,46 @@ tauri = { version = "2.11.3", features = [] }
 tauri-plugin-dialog = "2"
 tauri-plugin-log = "2"
 
-# Windows API surface, kept to what the platform abstraction actually needs:
-# drive-letter enumeration and volume queries (Phase 2) plus the current
-# process handle and its memory counters (used by the transfer suite to prove
-# that copying a large file does not grow this process's memory).
+[profile.release]
+# The shipped profile. `lto = "thin"` is the part that matters: cross-crate
+# inlining happens in a single link-time pass over every crate's bitcode, which
+# is what makes a release build faster than the default. `"fat"` is marginally
+# smaller and was tried first, but rustc 1.97.1 on Windows dies with
+# STATUS_ILLEGAL_INSTRUCTION inside the fat-LTO link of this crate, reproducibly,
+# so thin is what ships until the toolchain stops crashing; swapping the string
+# back is the whole change once it does. `codegen-units` is deliberately left at
+# cargo's default for the same reason — pinning it to 1 segfaults the same rustc.
+# Debug info stays off, and unwinding stays on: a panicking transfer worker is
+# caught and reported as a failed job, and `panic = "abort"` would turn that
+# into a dead process.
+#
+# Bit-for-bit reproducible artifacts are not claimed: the linker stamps a build
+# time into the executable header. What *is* fixed is everything this repository
+# controls — the sources, the lockfiles, and this profile.
+lto = "thin"
+debug = false
+incremental = false
+
+# The same rustc crashes while optimizing tauri-utils: the exact command cargo
+# runs for it (release flags, this crate, these features) dies with
+# STATUS_ILLEGAL_INSTRUCTION at `-C opt-level=1`, `2`, and `3`, and completes at
+# `0`. It reproduces in isolation, so it is a compiler crash and not a flaky
+# machine. tauri-utils is Tauri's config and command machinery — its cost is
+# paid once at startup — so shipping it unoptimized is cheaper than not shipping
+# a build at all. Delete this override once the toolchain no longer crashes;
+# nothing else depends on it.
+[profile.release.package.tauri-utils]
+opt-level = 0
+
+# Windows API surface, kept to what the application actually needs: drive
+# letter enumeration and volume queries (Phase 2), the current process handle
+# and its time and memory counters (used by the transfer suite and the
+# measurement harness), and the message box that reports a fatal startup
+# failure on a host with no console.
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.60", features = [
     "Win32_Storage_FileSystem",
     "Win32_System_ProcessStatus",
     "Win32_System_Threading",
+    "Win32_UI_WindowsAndMessaging",
 ] }

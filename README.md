@@ -6,10 +6,11 @@ Free forever. Offline first. No accounts, no ads, no telemetry.
 
 ## Status
 
-Phase 5 (the complete product experience) is complete: the whole journey from
-browsing a volume to reviewing a finished job in history works as one product,
-with verification, recovery, and a desktop-appropriate keyboard flow around it.
-The repository currently provides:
+Phase 6 (Windows production readiness) is complete: the application builds into
+Windows installers (NSIS and MSI) from a committed lockfile, starts on a
+machine with no Node, pnpm, Cargo, or repository anywhere in sight, and its
+performance at the largest datasets the backend can produce is measured and
+bounded by tests. The repository currently provides:
 
 - A Tauri 2 desktop shell (React 19 + TypeScript + Vite frontend, Rust backend)
 - A design-token-driven UI system with light/dark/system themes
@@ -58,9 +59,22 @@ automatically, and byte-offset resume of a partial file is deliberately refused
 - Desktop behaviour that respects the work in flight: closing the window while a
   transfer runs is held by Rust and answered in the interface, and `Ctrl`/`Cmd`+
   `1`…`6` move between pages without a mouse
-- Windows-safe production logging (stdout + rotating per-app log file)
+- A Windows installer (NSIS) and a WiX MSI, built from `scripts/release.sh`
+  into `apps/desktop/src-tauri/target/release/bundle/` with SHA-256 checksums,
+  and a shipped executable named `CrossPort.exe` after the product rather than
+  after the crate
+- Windows-safe production logging (stdout + rotating per-app log file) that
+  records startup context, app directories, and job identifiers — never the
+  user's file paths
+- A user-visible failure surface: a startup failure or a panic shows a message
+  box (with a matching log entry) instead of a window that never appears
+- Measured performance: startup, directory listings, deep trees, many small
+  files, a large streamed file, idle CPU, and the largest listing/history/queue
+  the interface can render, with budgets enforced by tests (see
+  `docs/development/PERFORMANCE.md`)
 - A restrictive CSP and a minimal Tauri capability set
-- Real test suites (Vitest + `cargo test`) and CI
+- Real test suites (Vitest + `cargo test`), a release-artifact smoke test, and
+  CI on Linux and Windows
 
 Not implemented yet: folder synchronization, scheduling, and the other Version 2+
 candidates in
@@ -81,6 +95,17 @@ for the phase plan.
 
 ## Requirements
 
+### To run CrossPort
+
+- Windows 10 1607+ or Windows 11, 64-bit
+- Microsoft Edge WebView2 runtime. Windows 11 and current Windows 10 include
+  it; the installer downloads and installs it silently when it is missing
+- Paths longer than 260 characters work when Windows has long paths enabled
+  (`LongPathsEnabled`); without it, Windows itself refuses them and CrossPort
+  reports the failure. Transfers below that limit are unaffected
+
+### To build CrossPort
+
 - Node.js >= 22 and pnpm 10
 - Rust (stable) with Cargo
 - Platform prerequisites for [Tauri 2](https://v2.tauri.app/start/prerequisites/)
@@ -99,6 +124,25 @@ folder picker, and backend-persisted settings):
 pnpm --filter desktop exec tauri dev
 ```
 
+## Installing
+
+The release artifacts are produced locally (see [Building a release](#building-a-release));
+there is no published download and no auto-updater.
+
+1. Run `CrossPort_<version>_x64-setup.exe` (NSIS, installs for the current user
+   into `%LOCALAPPDATA%\CrossPort`) or `CrossPort_<version>_x64_en-US.msi`
+   (WiX). The NSIS installer also adds a Start-menu entry and a desktop
+   shortcut.
+2. Start CrossPort from the Start menu. The window opens with no setup step and
+   no account.
+3. To remove it, use **Apps → Installed apps → CrossPort → Uninstall** the same
+   way as any other Windows application.
+
+Uninstalling removes the program and its shortcuts. Settings, transfer history,
+interrupted-transfer state, and logs live under `%APPDATA%\com.crossport.app`
+and `%LOCALAPPDATA%\com.crossport.app`; remove those folders by hand if you want
+them gone as well. CrossPort never deletes them for you.
+
 ## Verification
 
 Every change must keep the full suite green:
@@ -107,16 +151,81 @@ Every change must keep the full suite green:
 pnpm lint               # ESLint
 pnpm check              # Biome
 pnpm --filter desktop build   # typecheck + production build
-pnpm test               # Vitest (frontend)
+pnpm test               # Vitest (frontend, includes the performance budgets)
 cd apps/desktop/src-tauri
 cargo fmt --check       # Rust formatting
-cargo check             # Rust typecheck
-cargo test              # Rust tests
+cargo check --all-targets
+cargo clippy --all-targets
+cargo test              # Rust tests, real files included
 bash scripts/check-versions.sh   # version sync across manifests
 ```
 
 `scripts/lint.sh`, `scripts/test.sh`, and the [CI workflow](.github/workflows/ci.yml)
-orchestrate the same commands.
+orchestrate the same commands on Linux, and the workflow also runs the Rust
+suite on Windows so the Windows-only behaviour is exercised where it ships.
+
+Two further checks are run when preparing a release:
+
+```bash
+cargo test --test artifact_smoke -- --nocapture        # starts the built app
+cargo test --lib measure -- --ignored --nocapture     # performance numbers
+bash scripts/release.sh                               # installers + checksums
+```
+
+## Building a release
+
+```bash
+bash scripts/release.sh
+```
+
+This checks that every manifest agrees on the version, builds the frontend,
+builds the application with the committed lockfile (`cargo build --locked`),
+produces the NSIS installer and the MSI, and writes
+`apps/desktop/src-tauri/target/release/bundle/checksums.txt` with a SHA-256
+digest for every artifact. Nothing is uploaded anywhere.
+
+Artifacts are not code-signed: Windows SmartScreen will warn about an unknown
+publisher until a signing certificate and `bundle > windows > certificateThumbprint`
+are configured. `docs/development/RELEASE_PROCESS.md` has the details, including
+how to verify a digest and what the installers do to user data.
+
+## Running CrossPort
+
+Open a volume on the left, walk into folders with the breadcrumb trail or by
+double-clicking, tick the rows you want to transfer, and choose **Copy to…** or
+**Move to…**. The composer shows what the backend planned — sources, counts,
+free space, conflict behaviour, verification policy, and warnings — before
+anything is queued. The queue page owns the job from there: live byte, speed,
+and ETA progress; pause, resume, cancel; the verification verdict and what was
+not preserved; and a link to the finished job's record in History. If a job is
+interrupted (a crash, a close while it was running, a volume pulled out),
+Recovery lists it with what a restart would do, and nothing is restarted on its
+own. `Ctrl`/`Cmd`+`1`…`6` move between pages.
+
+## Known limitations
+
+- Windows is the only packaged target so far. The shell is cross-platform by
+  construction, but no macOS or Linux artifact is built or tested here.
+- Artifacts are not code-signed, so Windows shows an unknown-publisher warning
+  on first install.
+- There is no update checker: a new build is installed the same way as the
+  first one. Installing an older version over a newer one is refused.
+- One transfer runs at a time, by design. A second job waits in the queue.
+- History is bounded (200 records by default, 2,000 at most) and pruned on
+  write, so it is a record of recent work rather than an audit log.
+- Verification proves only the claims it lists: `size` by default, SHA-256 when
+  chosen, and `none` when asked for. Modification times, attributes, ownership,
+  and alternate data streams are not reapplied to what is written.
+- An interrupted transfer is never resumed at a byte offset: it is restarted or
+discarded whole, and CrossPort says so before doing either.
+- Paths longer than 260 characters need Windows long-path support enabled; the
+  engine creates a directory 3,475 characters deep and copies a tree that deep
+  on such a machine, and reports the Windows error verbatim on one where the
+  limit still applies.
+- The installers are exercised as far as one version allows: a fresh install, a
+  same-version reinstall, and an uninstall were all run against the built
+  artifact, but a real version upgrade and a refused downgrade need a second
+  version to exist and have not been.
 
 ## Architecture in one paragraph
 

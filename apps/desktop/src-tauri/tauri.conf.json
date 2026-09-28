@@ -1,13 +1,15 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "CrossPort",
+  "mainBinaryName": "CrossPort",
   "version": "0.1.0",
   "identifier": "com.crossport.app",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
     "beforeDevCommand": "pnpm dev",
-    "beforeBuildCommand": "pnpm build"
+    "beforeBuildCommand": "pnpm build",
+    "removeUnusedCommands": true
   },
   "app": {
     "windows": [
@@ -30,6 +32,12 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "publisher": "CrossPort Contributors",
+    "copyright": "Copyright © 2026 CrossPort Contributors",
+    "category": "Utility",
+    "shortDescription": "Copy and move files between volumes, and prove what landed.",
+    "longDescription": "CrossPort copies and moves files and folders between volumes. Every transfer is reviewed before it is queued, verified after it is written, kept in a durable history, and left for the user to restart or discard if it is interrupted. It works offline, with no account, no telemetry, and no background synchronization.",
+    "licenseFile": "../../../LICENSE",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -37,6 +45,24 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "windows": {
+      "allowDowngrades": false,
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "displayLanguageSelector": false,
+        "languages": ["English"],
+        "startMenuFolder": "CrossPort",
+        "installerIcon": "icons/icon.ico",
+        "uninstallerIcon": "icons/icon.ico"
+      },
+      "wix": {
+        "language": ["en-US"]
+      }
+    },
     "android": {
       "debugApplicationIdSuffix": ".debug"
     }

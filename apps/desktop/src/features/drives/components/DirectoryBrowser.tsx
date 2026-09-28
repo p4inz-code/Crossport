@@ -32,7 +32,9 @@ import {
   RefreshCw,
 } from "lucide-react";
 import {
+  memo,
   type KeyboardEvent as ReactKeyboardEvent,
+  useCallback,
   useRef,
   useState,
 } from "react";
@@ -54,6 +56,17 @@ import {
   selectionSummary,
 } from "../presentation";
 import "./DirectoryBrowser.css";
+
+/**
+ * Rows rendered before the user asks for more.
+ *
+ * The backend will list up to ten thousand entries, and building ten thousand
+ * rows costs a visibly slow first paint and makes every later click re-render
+ * the whole folder. Rendering a window of rows keeps a huge folder responsive;
+ * the count of what is shown and the way to see more are always on screen, so
+ * the window is never mistaken for the whole listing.
+ */
+const RENDER_STEP = 400;
 
 interface DirectoryBrowserProps {
   /** Absolute directory currently shown, or `null` when nothing is open. */
@@ -106,9 +119,35 @@ export function DirectoryBrowser({
   // A single row is highlighted for its details; a separate set of checkboxes
   // picks what a transfer moves.
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
-  const [checkedPaths, setCheckedPaths] = useState<readonly string[]>([]);
+  // A set, not a list: a folder with ten thousand entries must not rescan a
+  // selected-path array once per row on every render.
+  const [checkedPaths, setCheckedPaths] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   // The row holding keyboard focus, so one row is tabbable at a time.
   const [focusedPath, setFocusedPath] = useState<string | null>(null);
+  // The rendered window: how many rows are shown, and which folder they belong
+  // to. Opening a different folder starts its window over — adjusted during
+  // render, not in an effect, so a new listing never paints a stale window and
+  // an effect can never undo a "show more" the user just asked for.
+  const listingPath = listing?.path ?? null;
+  const [window, setWindow] = useState<{ path: string | null; count: number }>({
+    path: listingPath,
+    count: RENDER_STEP,
+  });
+  if (window.path !== listingPath) {
+    setWindow({ path: listingPath, count: RENDER_STEP });
+  }
+
+  const visibleCount = window.count;
+  const setVisibleCount = useCallback(
+    (next: number | ((current: number) => number)): void =>
+      setWindow((current) => ({
+        ...current,
+        count: typeof next === "function" ? next(current.count) : next,
+      })),
+    [],
+  );
   const rowRefs = useRef(new Map<string, HTMLButtonElement>());
 
   // Both are stored as paths, so an entry that disappears with the next
@@ -116,64 +155,94 @@ export function DirectoryBrowser({
   const selectedEntry =
     listing?.entries.find((entry) => entry.path === selectedPath) ?? null;
   const checkedEntries =
-    listing?.entries.filter((entry) => checkedPaths.includes(entry.path)) ?? [];
+    listing?.entries.filter((entry) => checkedPaths.has(entry.path)) ?? [];
   const checkedSources = checkedEntries.map((entry) => entry.path);
   const allChecked =
     listing !== null &&
     listing.entries.length > 0 &&
     checkedEntries.length === listing.entries.length;
 
-  function toggleChecked(path: string): void {
-    setCheckedPaths((current) =>
-      current.includes(path)
-        ? current.filter((entry) => entry !== path)
-        : [...current, path],
-    );
-  }
+  const entries = listing?.entries ?? [];
+  const visibleEntries =
+    visibleCount >= entries.length ? entries : entries.slice(0, visibleCount);
 
-  function activate(entry: DirectoryEntry, force: boolean): void {
-    if (isOpenableDirectory(entry) && (force || entry.kind === "directory")) {
-      setSelectedPath(null);
-      onOpen(entry.path);
-      return;
-    }
-    setSelectedPath(entry.path);
-  }
+  const toggleChecked = useCallback((path: string): void => {
+    setCheckedPaths((current) => {
+      const next = new Set(current);
+      if (next.has(path)) {
+        next.delete(path);
+      } else {
+        next.add(path);
+      }
+      return next;
+    });
+  }, []);
+
+  const activate = useCallback(
+    (entry: DirectoryEntry, force: boolean): void => {
+      if (isOpenableDirectory(entry) && (force || entry.kind === "directory")) {
+        setSelectedPath(null);
+        onOpen(entry.path);
+        return;
+      }
+      setSelectedPath(entry.path);
+    },
+    [onOpen],
+  );
+
+  const registerRow = useCallback(
+    (path: string, node: HTMLButtonElement | null): void => {
+      if (node === null) {
+        rowRefs.current.delete(path);
+      } else {
+        rowRefs.current.set(path, node);
+      }
+    },
+    [],
+  );
 
   /** Moves the keyboard focus and the highlighted row by `delta` rows. */
-  function moveFocus(fromPath: string | null, delta: number): void {
-    const entries = listing?.entries ?? [];
-    if (entries.length === 0) {
-      return;
-    }
-    const index =
-      fromPath === null
-        ? -1
-        : entries.findIndex((entry) => entry.path === fromPath);
-    const target =
-      entries[Math.min(Math.max(index + delta, 0), entries.length - 1)];
-    if (target === undefined) {
-      return;
-    }
-    setSelectedPath(target.path);
-    setFocusedPath(target.path);
-    rowRefs.current.get(target.path)?.focus();
-  }
+  const moveFocus = useCallback(
+    (fromPath: string | null, delta: number): void => {
+      const rows = listing?.entries ?? [];
+      if (rows.length === 0) {
+        return;
+      }
+      const index =
+        fromPath === null
+          ? -1
+          : rows.findIndex((entry) => entry.path === fromPath);
+      const targetIndex = Math.min(Math.max(index + delta, 0), rows.length - 1);
+      const target = rows[targetIndex];
+      if (target === undefined) {
+        return;
+      }
+      // Moving past the end of the rendered window reveals the next row, so
+      // the arrow keys keep working on a folder larger than one screenful.
+      setVisibleCount((current) =>
+        targetIndex < current ? current : targetIndex + 1,
+      );
+      setSelectedPath(target.path);
+      setFocusedPath(target.path);
+      rowRefs.current.get(target.path)?.focus();
+    },
+    [listing, setVisibleCount],
+  );
 
-  function handleRowKey(
-    event: ReactKeyboardEvent<HTMLElement>,
-    entry: DirectoryEntry,
-  ): void {
-    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-      event.preventDefault();
-      moveFocus(entry.path, event.key === "ArrowDown" ? 1 : -1);
-      return;
-    }
-    if (event.key === " ") {
-      event.preventDefault();
-      toggleChecked(entry.path);
-    }
-  }
+  const handleRowKey = useCallback(
+    (event: ReactKeyboardEvent<HTMLElement>, entry: DirectoryEntry): void => {
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        moveFocus(entry.path, event.key === "ArrowDown" ? 1 : -1);
+        return;
+      }
+      if (event.key === " ") {
+        event.preventDefault();
+        toggleChecked(entry.path);
+      }
+    },
+    [moveFocus, toggleChecked],
+  );
 
   function handleKeyDown(event: ReactKeyboardEvent<HTMLElement>): void {
     if (!event.altKey) {
@@ -369,6 +438,30 @@ export function DirectoryBrowser({
                   folder holds more than CrossPort lists at once.
                 </p>
               ) : null}
+              {visibleEntries.length < listing.entries.length ? (
+                <p className="browser__notice" role="status">
+                  Showing {visibleEntries.length} of {listing.entries.length}{" "}
+                  entries.
+                  <span className="browser__notice-actions">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() =>
+                        setVisibleCount((current) => current + RENDER_STEP)
+                      }
+                    >
+                      Show {RENDER_STEP} more
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setVisibleCount(listing.entries.length)}
+                    >
+                      Show all {listing.entries.length}
+                    </Button>
+                  </span>
+                </p>
+              ) : null}
               <table className="browser__table">
                 <thead>
                   <tr>
@@ -386,8 +479,10 @@ export function DirectoryBrowser({
                         onChange={() =>
                           setCheckedPaths(
                             allChecked
-                              ? []
-                              : listing.entries.map((entry) => entry.path),
+                              ? new Set()
+                              : new Set(
+                                  listing.entries.map((entry) => entry.path),
+                                ),
                           )
                         }
                       />
@@ -405,25 +500,19 @@ export function DirectoryBrowser({
                   </tr>
                 </thead>
                 <tbody>
-                  {listing.entries.map((entry, index) => (
+                  {visibleEntries.map((entry, index) => (
                     <EntryRow
                       key={entry.path}
                       entry={entry}
                       selected={entry.path === selectedPath}
-                      checked={checkedPaths.includes(entry.path)}
+                      checked={checkedPaths.has(entry.path)}
                       // One tab stop: the focused row, or the first one.
                       tabbable={
                         focusedPath === null
                           ? index === 0
                           : entry.path === focusedPath
                       }
-                      registerRef={(node) => {
-                        if (node === null) {
-                          rowRefs.current.delete(entry.path);
-                        } else {
-                          rowRefs.current.set(entry.path, node);
-                        }
-                      }}
+                      registerRow={registerRow}
                       onToggleChecked={toggleChecked}
                       onActivate={activate}
                       onKey={handleRowKey}
@@ -446,7 +535,7 @@ export function DirectoryBrowser({
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => setCheckedPaths([])}
+              onClick={() => setCheckedPaths(new Set())}
             >
               Clear selection
             </Button>
@@ -477,7 +566,7 @@ interface EntryRowProps {
   selected: boolean;
   checked: boolean;
   tabbable: boolean;
-  registerRef: (node: HTMLButtonElement | null) => void;
+  registerRow: (path: string, node: HTMLButtonElement | null) => void;
   onToggleChecked: (path: string) => void;
   onActivate: (entry: DirectoryEntry, force: boolean) => void;
   onKey: (
@@ -486,18 +575,26 @@ interface EntryRowProps {
   ) => void;
 }
 
-function EntryRow({
+/**
+ * One row, memoized: checking a box or highlighting a row re-renders that row
+ * and the row that lost its highlight, not every entry in the folder.
+ */
+const EntryRow = memo(function EntryRow({
   entry,
   selected,
   checked,
   tabbable,
-  registerRef,
+  registerRow,
   onToggleChecked,
   onActivate,
   onKey,
 }: EntryRowProps) {
   const Icon = ENTRY_KIND_ICONS[entry.kind];
   const isDirectory = entry.kind === "directory";
+  const registerRef = useCallback(
+    (node: HTMLButtonElement | null) => registerRow(entry.path, node),
+    [registerRow, entry.path],
+  );
 
   return (
     <tr className={cn("browser__row", selected && "browser__row--selected")}>
@@ -548,7 +645,7 @@ function EntryRow({
       </td>
     </tr>
   );
-}
+});
 
 function Summary({ listing }: { listing: DirectoryListing }) {
   const folders = listing.entries.filter(

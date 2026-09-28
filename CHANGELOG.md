@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Windows production readiness: `tauri.conf.json` now carries the publisher,
+  copyright, license file, description, and category, a current-user NSIS
+  installer with a language and Start-menu folder, a WiX MSI, a silent WebView2
+  bootstrapper, and refused downgrades; unused plugin commands are stripped from
+  the binary; and the shipped executable is `CrossPort.exe` (`mainBinaryName`)
+  rather than cargo's `crossport.exe`.
+- A release-artifact smoke test (`tests/artifact_smoke.rs`): the built
+  application is copied alone into a temporary directory and launched with Node,
+  pnpm, Cargo, and the repository scrubbed from its environment, proving it
+  writes its startup line, creates a visible window, and exits cleanly when that
+  window is closed.
+- A performance measurement harness (`src/measure.rs`, opt-in through
+  `cargo test --lib measure -- --ignored --nocapture`) covering directory
+  listings, deep trees, many small files, a 512 MiB streamed file, idle CPU, a
+  full history, and the deepest path this host can create — plus frontend
+  budgets in `src/test/performance.test.tsx` for the largest listing, history,
+  and queue the interface can be handed. Findings are in
+  `docs/development/PERFORMANCE.md`.
+- A message box for a fatal startup failure or a panic, with a matching log
+  entry, so a release build on a machine with no console says what went wrong
+  instead of showing a window that never appears.
+- `scripts/release.sh` now builds with `--locked` and writes
+  `bundle/checksums.txt` (a SHA-256 digest per artifact), and CI gained a
+  Windows job that runs the Rust suite where the application ships.
+- Cross-volume sanity coverage: a copy and a move between two real volumes,
+  skipped with a printed reason on a single-volume host.
 - Product experience pass: the whole application now reads as one product.
   The browser shows a backend-resolved breadcrumb trail and remembers where you
   went (back, forward, up — buttons and `Alt`+arrow keys); the composer states
@@ -209,6 +235,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The browser no longer renders every entry of a listing: it renders a window
+  of rows, states how much is shown with **Show 400 more** / **Show all N**,
+  memoizes the rows, and keeps the checked paths in a set. At the 10,000-entry
+  listing cap that took a first paint from 1.7 s to 0.17 s and a checkbox from
+  0.65 s to 6 ms.
+- The release profile uses `lto = "thin"` instead of fat LTO, and `tauri-utils`
+  is pinned to `opt-level = 0`: rustc 1.97.1 on Windows dies inside the fat-LTO
+  link of this crate and while optimizing that crate, reproducibly. The
+  reasoning and a note to revert are in `apps/desktop/src-tauri/Cargo.toml`.
+- README, the release process, the release checklist, and the CI documentation
+  were corrected where they described workflows that do not exist — a release
+  workflow building macOS and Linux bundles, an update server, publishing
+  automation — and now describe what the repository actually does.
 - A verification failure fails its item and the job, and reports what was
   expected and what was found, instead of a job ending as a plain success with
   only a byte count behind it.

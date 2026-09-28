@@ -6,6 +6,11 @@ import { IpcError } from "@/services/ipc";
 import { makeEntry, makeListing } from "@/test/fixtures";
 import { DirectoryBrowser } from "./DirectoryBrowser";
 
+// Rendering hundreds of rows in jsdom costs seconds, and a full parallel run
+// leaves far less headroom than an isolated one. The window-heavy tests below
+// raise their own budget rather than making the whole suite's default looser.
+const WINDOWED_ROWS_TIMEOUT = 30_000;
+
 const LISTING = makeListing({
   entries: [
     makeEntry({
@@ -488,4 +493,79 @@ describe("DirectoryBrowser", () => {
       screen.getByText("0 folders · 0 files · 1 other"),
     ).toBeInTheDocument();
   });
+
+  it(
+    "renders a huge folder in windows and says how much it is showing",
+    () => {
+      renderBrowser({
+        location: "C:\\data",
+        listing: makeListing({ entries: manyEntries(1000) }),
+        status: "ready",
+      });
+
+      expect(screen.getAllByRole("rowheader")).toHaveLength(400);
+      expect(screen.getByText(/Showing 400 of/)).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: "Show 400 more" }));
+      expect(screen.getAllByRole("rowheader")).toHaveLength(800);
+      expect(screen.getByText(/Showing 800 of/)).toBeInTheDocument();
+
+      // "Show all" is offered but not clicked here: rendering a thousand rows
+      // costs seconds in this environment, and the window mechanism is what this
+      // test is about. The button's label carries the count it would reveal.
+      expect(
+        screen.getByRole("button", { name: "Show all 1000" }),
+      ).toBeInTheDocument();
+    },
+    WINDOWED_ROWS_TIMEOUT,
+  );
+
+  it(
+    "reveals the next row when the arrow keys leave the rendered window",
+    () => {
+      renderBrowser({
+        location: "C:\\data",
+        listing: makeListing({ entries: manyEntries(1000) }),
+        status: "ready",
+      });
+
+      const lastVisible = screen.getAllByRole("button", {
+        name: /file-00399\.bin/,
+      })[0];
+      lastVisible.focus();
+      fireEvent.keyDown(lastVisible, { key: "ArrowDown" });
+
+      expect(screen.getAllByRole("rowheader")).toHaveLength(401);
+    },
+    WINDOWED_ROWS_TIMEOUT,
+  );
+
+  it(
+    "keeps one checkbox out of the tab order per row while selecting",
+    () => {
+      renderBrowser({
+        location: "C:\\data",
+        listing: makeListing({ entries: manyEntries(500) }),
+        status: "ready",
+      });
+
+      const boxes = screen.getAllByRole("checkbox");
+      // One select-all box plus one box per rendered row, all untabbable.
+      expect(boxes).toHaveLength(401);
+      for (const box of boxes.slice(1)) {
+        expect(box).toHaveAttribute("tabindex", "-1");
+      }
+    },
+    WINDOWED_ROWS_TIMEOUT,
+  );
 });
+
+/** Entries named so their order matches their index. */
+function manyEntries(count: number) {
+  return Array.from({ length: count }, (_, index) =>
+    makeEntry({
+      name: `file-${index.toString().padStart(5, "0")}.bin`,
+      path: `C:\\data\\file-${index}.bin`,
+    }),
+  );
+}

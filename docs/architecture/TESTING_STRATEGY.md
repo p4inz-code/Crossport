@@ -38,6 +38,9 @@ Status: Approved
 | `layouts/CloseConfirmDialog` | The close question, its facts, Escape as the safe answer, the confirmed exit, and a close the backend refuses |
 | `features/**/*.test.tsx` | Volume metadata rendering, capacity meters, entry tables, the breadcrumb trail, navigation controls, multi-select and transfer actions, the loading/empty/error states of the drives page and the settings page, the transfer composer's dry run and conflict strategies, the queue surface's progress, issues, verification verdict, controls, and history link, the history list / filters / details, the recovery page's outcomes and actions, the notification stack's navigation and dismissal, and the home page's live counts and keyboard reference |
 | `app/journeys` | Whole journeys across the real pages with only the Rust boundary mocked: browse → review → queue → complete → notification → history, interrupted → notification → recovery decision, and a destination that disappeared reported as the backend's own structured error |
+| `test/performance` | Budgets at the largest datasets the backend can produce: rendering a 10,000-entry listing in a window and one click inside it, a 2,000-record history (including a selection), a 500-job queue, and the IPC-boundary schema check for a 10,000-entry listing. The budgets sit far above the measured cost; they exist to catch a return to rendering every row on every change, which measured 1,672 ms and 649 ms where the current code measures 173 ms and 6 ms |
+| `errors/dialog` | The panic message in each payload shape, and that a second failure does not stack a second dialog |
+| `hooks/useAppShortcuts`, `hooks/useCloseGuard` | Route jumps, keystrokes in a field left alone, and the close question with live or interrupted work |
 
 Run with `pnpm test` (or `pnpm --filter desktop test`).
 
@@ -69,10 +72,25 @@ Run with `pnpm test` (or `pnpm --filter desktop test`).
 | `archive` | Journaling during a job, history written before state is forgotten, restart / discard / confirm end to end against a real directory, revised records instead of duplicates |
 | `transfer::tests` (verification) | The policy in the engine's copy path: `size` verified, `checksum` with recorded digests, `none` reported as skipped rather than verified |
 | `transfer::sanity` | Real end-to-end runs on disk: nested tree copy, move, all three conflict strategies, pause/resume/cancel cleanliness, a 192 MiB file streamed under a memory ceiling, unsafe requests leaving the disk untouched, queue order, and verification of a real tree under `size`, `checksum` (including a tampered copy being caught), and `none` |
+| `transfer::sanity` (cross-volume) | A copy and a move between two real volumes when the host exposes a second writable one: the bytes really move, a copy keeps its source, a move removes it only after the destination is complete, and neither side keeps a temporary file. Skips with a printed reason on a single-volume host |
+| `measure` (opt-in) | Directory listing, deep tree planning, many small files, one large file with a memory ceiling, archive open with a full history, path-length reach, and idle CPU. `#[ignore]`d so the default suite stays deterministic; run with `cargo test --lib measure -- --ignored --nocapture`. Numbers are recorded in `docs/development/PERFORMANCE.md` |
+| `artifact_smoke` (opt-in) | The built executable, launched from an isolated directory with an environment that holds no Node, pnpm, Cargo, or repository: it writes its startup line, creates a visible window, and exits cleanly when the window is closed. Skips with a printed reason when no artifact has been built |
 
 Run with `cargo test` in `apps/desktop/src-tauri`.
 
 ## CI
 
 The CI pipeline runs both suites plus format, lint, build, and version-sync
-checks on every push and pull request. See `docs/development/CI_CD.md`.
+checks on every push and pull request, and runs the Rust suite on Windows as
+well as Linux: the cross-volume and long-path behaviour only exists on the
+platform CrossPort ships to. See `docs/development/CI_CD.md`.
+
+## What is not automated
+
+- The artifact smoke test is opt-in (it needs a built release artifact) and is
+  not part of `cargo test` on a fresh clone.
+- The measurement harness is opt-in for the same reason: timings on a shared CI
+  runner are noise, so budgets live in the frontend suite and the backend
+  numbers are recorded in `docs/development/PERFORMANCE.md`.
+- A full click-through of a copy in the installed application is a manual pass;
+  the engine path behind it is exercised in release mode with real files.

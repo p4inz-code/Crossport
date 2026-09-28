@@ -34,8 +34,34 @@ jobs:
         run: pnpm test
 
   backend:
-    name: Backend (fmt, check, test)
+    name: Backend (fmt, check, clippy, test)
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/desktop/src-tauri
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+      - name: Format check
+        run: cargo fmt --check
+      - name: Check
+        run: cargo check --all-targets
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Test
+        run: cargo test
+
+  backend-windows:
+    # The application ships on Windows: the cross-volume transfers, the volume
+    # probes, the long-path handling, and the log directory all differ there,
+    # so the Windows-only behaviour is exercised where it runs.
+    name: Backend on Windows (fmt, test)
+    runs-on: windows-latest
     defaults:
       run:
         working-directory: apps/desktop/src-tauri
@@ -49,8 +75,6 @@ jobs:
           workspaces: apps/desktop/src-tauri
       - name: Format check
         run: cargo fmt --check
-      - name: Check
-        run: cargo check
       - name: Test
         run: cargo test
 

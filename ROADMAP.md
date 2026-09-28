@@ -123,7 +123,61 @@ changes what is on disk is a keystroke), the composer reports the engine's plan
 rather than predicting a different one, and the notification stack is a toast
 surface, not a log.
 
-## Phase 6 — Version 2 candidates
+## Phase 6 — Performance and Windows production (complete)
+
+- [x] Performance measured on real Windows workloads and recorded:
+      startup (settings plus archive), a 10,000-entry directory listing, a
+      500-level tree plan, 2,000 small files, a 512 MiB streamed file, idle CPU,
+      and the largest listing / history / queue the interface can render — see
+      `docs/development/PERFORMANCE.md`
+- [x] The one genuine interface problem the measurements found: the browser
+      rendered every entry of every listing on every change, which cost 1.7 s to
+      paint and 0.65 s per click at the 10,000-entry cap. It now renders a
+      window of rows, states how much of the listing is shown, and memoizes the
+      rows: 0.17 s and 0.006 s, with budgets enforced by tests
+- [x] Transfer robustness on real Windows volumes: nested trees, a move, all
+      three conflict strategies, pause/resume/cancel cleanliness, streaming
+      under a memory ceiling, queue order, verification, and — new — a copy and
+      a move between two real volumes, skipped with a printed reason on a
+      single-volume host
+- [x] Startup and shutdown exercised across the lifecycle: clean start, start
+      after successful work, start with interrupted work, start with a damaged
+      document, close with nothing in flight, close with work in flight, and
+      restart after a recovery decision
+- [x] Production build hardened: publisher, copyright, descriptions, license,
+      category, current-user NSIS with a language and Start-menu folder, WiX
+      MSI, WebView2 bootstrapper, downgrades refused, and unused plugin
+      commands stripped from the binary; the shipped executable is
+      `CrossPort.exe` rather than cargo's `crossport.exe`; release profile
+      pinned with thin LTO and no debug info (rustc 1.97.1 crashes inside a
+      fat-LTO link of this crate on Windows, reproducibly — see
+      `apps/desktop/src-tauri/Cargo.toml`)
+- [x] Real artifacts built (NSIS installer and MSI), checked for version
+      consistency and hashed into `bundle/checksums.txt` by `scripts/release.sh`
+- [x] Clean-environment verification: the built executable starts from an
+      isolated directory with no Node, pnpm, Cargo, repository, or development
+      environment variable in sight, writes its startup line, creates a visible
+      window, and exits cleanly when the window is closed
+- [x] Install, upgrade, and uninstall exercised against the built installer,
+      including what happens to user data across each step: it installs into
+      `%LOCALAPPDATA%\CrossPort` with a Start-menu entry, a desktop shortcut,
+      and an entry in **Apps → Installed apps**; reinstalling the same version
+      replaces the program files; uninstalling removes the program, the
+      shortcuts, and the registry entry and leaves user data alone
+- [x] Logging reviewed for production: startup context, application
+      directories, archive health, and job identifiers — never the user's file
+      paths. A startup failure or a panic now shows a message box with a
+      matching log entry instead of a window that never appears
+- [x] CI gained a Windows job for the Rust suite, and the release process,
+      checklist, and documentation were corrected where they described
+      workflows that did not exist
+
+What Phase 6 deliberately does not do: no telemetry, no update checker, no code
+signing (there is no certificate in this repository), no installer publishing,
+and no V2 features. The remaining limits are written down in `README.md` under
+"Known limitations".
+
+## Phase 7 — Version 2 candidates
 
 Not started. Candidates from `docs/product/FEATURE_SPECIFICATION.md`: folder
 synchronization, watched folders, batch operations, and advanced transfer rules.

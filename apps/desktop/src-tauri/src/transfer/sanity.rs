@@ -14,6 +14,7 @@
 use super::*;
 use crate::filesystem::test_support::unique_temp_dir;
 use crate::platform;
+use crate::platform::volume::VolumeKind;
 use crate::verification::{
     ChecksumAlgorithm, VerificationMethod, VerificationMismatchReason, VerificationPolicy,
     VerificationStatus,
@@ -48,6 +49,14 @@ impl Workspace {
         Self {
             root: unique_temp_dir(label),
         }
+    }
+
+    /// A workspace on a root chosen by the caller, removed on drop like any
+    /// other: used for the cross-volume tests, which have to place one side of
+    /// the transfer on a second volume.
+    fn at(root: PathBuf) -> Self {
+        std::fs::create_dir_all(&root).expect("workspace root is creatable");
+        Self { root }
     }
 
     fn path(&self, relative: &str) -> PathBuf {
@@ -141,6 +150,23 @@ fn assert_same_tree(source: &Path, destination: &Path) {
     }
 }
 
+/// Every file under `base` with its bytes, keyed by its relative path.
+///
+/// Used where the source is expected to disappear before the comparison — a
+/// completed move — so the destination can be checked against what was there.
+fn collect_files(base: &Path) -> Vec<(String, Vec<u8>)> {
+    let mut files: Vec<(String, Vec<u8>)> = relative_tree(base)
+        .into_iter()
+        .filter(|entry| !entry.ends_with('/'))
+        .map(|relative| {
+            let bytes = std::fs::read(base.join(&relative)).expect("the file is readable");
+            (relative, bytes)
+        })
+        .collect();
+    files.sort();
+    files
+}
+
 /// Fails when any temporary or partial artefact is left anywhere under `root`.
 fn assert_no_leftovers(root: &Path) {
     let leftovers: Vec<String> = relative_tree(root)
@@ -151,6 +177,34 @@ fn assert_no_leftovers(root: &Path) {
         leftovers.is_empty(),
         "a finished or cancelled transfer leaves nothing behind: {leftovers:?}"
     );
+}
+
+/// A workspace on a volume other than the one the system temporary directory
+/// lives on, or `None` when the host exposes only one writable volume.
+///
+/// Cross-volume work is the case the same-volume rename shortcut cannot cover:
+/// the bytes really have to be copied, and a move may only remove the source
+/// after the destination is complete. The directory is unique, created on the
+/// second volume's root, and removed on drop even when the test fails.
+fn second_volume_workspace(label: &str) -> Option<Workspace> {
+    let temp_volume = crate::platform::drives::volume_root_for(&std::env::temp_dir())?;
+    for volume in crate::platform::drives::list_drives() {
+        let usable = volume.mounted
+            && volume.readonly != Some(true)
+            && matches!(volume.kind, VolumeKind::Fixed | VolumeKind::Removable);
+        if !usable {
+            continue;
+        }
+        let root = PathBuf::from(&volume.root);
+        if crate::platform::paths::same_path(&root, &temp_volume) {
+            continue;
+        }
+        let candidate = root.join(format!("crossport-sanity-{label}-{}", std::process::id()));
+        if std::fs::create_dir_all(&candidate).is_ok() {
+            return Some(Workspace::at(candidate));
+        }
+    }
+    None
 }
 
 fn wait_for_status(engine: &TransferEngine, id: &str, status: TransferStatus) -> TransferSnapshot {
@@ -183,6 +237,85 @@ fn request_for(
         conflict,
         verification: None,
     }
+}
+
+/// Cross-volume copy: the bytes really move between volumes, the source stays,
+/// and nothing temporary is left behind on either side.
+#[test]
+fn sanity_a_cross_volume_copy_moves_the_bytes_and_keeps_the_source() {
+    let Some(destination_workspace) = second_volume_workspace("copy") else {
+        println!("skipped: this host exposes a single writable volume");
+        return;
+    };
+    let source_workspace = Workspace::new("sanity-cross-volume-copy");
+    let source = source_workspace.directory("Data");
+    source_workspace.file("Data/readme.md", 6 * 1024);
+    source_workspace.file("Data/nested/large.bin", 4 * 1024 * 1024);
+
+    let destination = destination_workspace.directory("target");
+    let engine = TransferEngine::new(1);
+    let queued = engine
+        .enqueue_request(request_for(
+            &[&source],
+            &destination,
+            TransferOperation::Copy,
+            ConflictStrategy::Replace,
+        ))
+        .expect("a cross-volume copy plans");
+
+    let finished = wait_for_status(&engine, &queued.id, TransferStatus::Completed);
+    assert_eq!(finished.progress.failed_items, 0);
+    assert_same_tree(&source, &destination.join("Data"));
+    assert!(source.exists(), "a copy leaves the source where it was");
+    assert_no_leftovers(&destination_workspace.root);
+    assert_no_leftovers(&source_workspace.root);
+
+    engine.shutdown();
+}
+
+/// Cross-volume move: copy first, remove the source only after the destination
+/// is complete, and leave no partial output on either volume.
+#[test]
+fn sanity_a_cross_volume_move_copies_before_it_removes() {
+    let Some(destination_workspace) = second_volume_workspace("move") else {
+        println!("skipped: this host exposes a single writable volume");
+        return;
+    };
+    let source_workspace = Workspace::new("sanity-cross-volume-move");
+    let source = source_workspace.directory("Payload");
+    source_workspace.file("Payload/alpha.bin", 2 * 1024 * 1024);
+    source_workspace.file("Payload/nested/beta.bin", 512 * 1024);
+
+    // The source is gone after a completed move, so what it held is recorded
+    // first and the destination is compared against that record.
+    let expected = collect_files(&source);
+
+    let destination = destination_workspace.directory("target");
+    let engine = TransferEngine::new(1);
+    let queued = engine
+        .enqueue_request(request_for(
+            &[&source],
+            &destination,
+            TransferOperation::Move,
+            ConflictStrategy::Replace,
+        ))
+        .expect("a cross-volume move plans");
+
+    let finished = wait_for_status(&engine, &queued.id, TransferStatus::Completed);
+    assert_eq!(finished.progress.failed_items, 0);
+    assert_eq!(
+        collect_files(&destination.join("Payload")),
+        expected,
+        "a cross-volume move writes every byte before removing the source"
+    );
+    assert!(
+        !source.exists(),
+        "a completed move removes the source after the destination is complete"
+    );
+    assert_no_leftovers(&destination_workspace.root);
+    assert_no_leftovers(&source_workspace.root);
+
+    engine.shutdown();
 }
 
 /// The same request with an explicit verification policy, as the command layer

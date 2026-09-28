@@ -12,6 +12,9 @@
  * switches on `code` and must never string-match `message`.
  * ========================================================================== */
 
+mod dialog;
+pub use dialog::{install_panic_hook, show_fatal};
+
 use serde::ser::{Serialize, SerializeMap, Serializer};
 
 /// Application-level error type shared across backend modules.

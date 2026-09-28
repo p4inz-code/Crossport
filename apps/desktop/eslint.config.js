@@ -6,7 +6,9 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 
 export default defineConfig([
-  globalIgnores(["dist"]),
+  // `src-tauri/target` holds Rust build output, including JS the Tauri bundler
+  // generates from the frontend bundle; it is not source and must not be linted.
+  globalIgnores(["dist", "src-tauri/target"]),
   {
     files: ["**/*.{ts,tsx}"],
     extends: [

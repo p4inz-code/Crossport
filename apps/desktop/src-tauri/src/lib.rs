@@ -14,6 +14,8 @@ mod errors;
 mod filesystem;
 mod history;
 mod logging;
+#[cfg(test)]
+mod measure;
 mod persistence;
 mod platform;
 mod recovery;
@@ -51,6 +53,10 @@ impl TransferPublisher for FrontendPublisher {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // A release build has no console: a panic would otherwise stop the app
+    // with nothing on screen. Installed before anything else can fail.
+    errors::install_panic_hook();
+
     let app = tauri::Builder::default()
         .plugin(logging::plugin())
         .plugin(tauri_plugin_dialog::init())
@@ -136,7 +142,15 @@ pub fn run() {
         })
         .build(tauri::generate_context!())
         .unwrap_or_else(|error| {
-            eprintln!("failed to start CrossPort application: {error}");
+            // The log is written first (inside `show_fatal`), then the user is
+            // told why no window appeared instead of the process vanishing.
+            errors::show_fatal(
+                "CrossPort could not start",
+                &format!(
+                    "CrossPort could not start and has to stop.\n\n{error}\n\n\
+                     The details are in CrossPort's log folder."
+                ),
+            );
             std::process::exit(1);
         });
 
