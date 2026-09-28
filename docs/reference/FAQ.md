@@ -26,10 +26,15 @@ attack surface stays minimal.
 
 ## What error format does the backend use?
 
-`{ "code", "message" }` objects with stable codes: `invalid_input`,
-`path_not_found`, `path_not_directory`, `permission_denied`, `io`, and
+`{ "code", "message" }` objects with stable codes, one per backend failure
+category: `invalid_input`, `path_not_found`, `path_not_directory`,
+`permission_denied`, `io`, `unsafe_relationship`, `not_enough_space`,
+`disk_full`, `too_many_items`, `transfer_not_found`, `transfer_failed`,
+`verification_failed`, `state_unavailable`, `recovery_unavailable`, and
 `internal`. The frontend normalizes them to `IpcError` and switches on `code`,
-never on the message. See `docs/architecture/ERROR_HANDLING.md`.
+never on the message. `apps/desktop/src/services/ipc.ts` and
+`apps/desktop/src-tauri/src/errors/mod.rs` are the two lists that must stay in
+step; `docs/architecture/ERROR_HANDLING.md` is the reference.
 
 ## Where are the backend logs?
 
@@ -46,6 +51,19 @@ listed as *Not available*. Facts the OS cannot provide are never invented.
 
 ## Which commands does the backend expose today?
 
-`get_settings`, `update_settings`, `get_system_info`, `list_drives`,
-`list_directory`, `inspect_path`, and `pick_directory` — see
-`apps/desktop/README.md`.
+The command surface is grouped by domain in `apps/desktop/src-tauri/src/commands/`:
+
+- App and platform: `get_system_info`, `list_drives`, `pick_directory`,
+  `exit_app`
+- Filesystem browsing: `inspect_path`, `list_directory`, `list_ancestors`
+- Settings: `get_settings`, `update_settings`
+- Transfers: `plan_transfer`, `start_transfer`, `list_transfers`,
+  `get_transfer`, `pause_transfer`, `resume_transfer`, `cancel_transfer`,
+  `remove_transfer`, `clear_finished_transfers`
+- History: `list_history`, `get_history_record`, `delete_history_record`,
+  `clear_history`, `get_archive_status`
+- Recovery: `list_recovery_candidates`, `get_recovery_candidate`,
+  `recover_transfer`
+
+`lib.rs` (`invoke_handler`) is the authoritative list; a command that is not
+there is not reachable from the frontend.

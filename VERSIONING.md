@@ -23,5 +23,11 @@ increment and the patch version represents fixes on the current increment.
 
 ## Release process
 
-Follow `docs/development/RELEASE_PROCESS.md`. Tagged `v*` pushes trigger the
-release workflow, which builds desktop bundles on Windows, macOS, and Linux.
+Follow `docs/development/RELEASE_PROCESS.md`. Releases are built locally on
+Windows with `scripts/release.sh`; the repository ships no publishing
+automation, no update server, and no macOS or Linux bundle. CI (`.github/workflows/ci.yml`)
+runs lint, tests, and the version check only — it never builds installers.
+
+A tagged `v*` push does not trigger any workflow. Tagging is a record of what
+was released, not a build trigger; the artifacts are attached to the release by
+hand, with their `checksums.txt` digests.

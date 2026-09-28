@@ -6,11 +6,13 @@ Free forever. Offline first. No accounts, no ads, no telemetry.
 
 ## Status
 
-Phase 6 (Windows production readiness) is complete: the application builds into
-Windows installers (NSIS and MSI) from a committed lockfile, starts on a
-machine with no Node, pnpm, Cargo, or repository anywhere in sight, and its
-performance at the largest datasets the backend can produce is measured and
-bounded by tests. The repository currently provides:
+Phases 0–7 are complete: the engine, the interface, verification, recovery, and
+history all work end to end, and the Windows production build is hardened and
+released from a committed lockfile. The application builds into Windows
+installers (NSIS and MSI), starts on a machine with no Node, pnpm, Cargo, or
+repository anywhere in sight, and its performance at the largest datasets the
+backend can produce is measured and bounded by tests. The repository currently
+provides:
 
 - A Tauri 2 desktop shell (React 19 + TypeScript + Vite frontend, Rust backend)
 - A design-token-driven UI system with light/dark/system themes
@@ -65,7 +67,8 @@ automatically, and byte-offset resume of a partial file is deliberately refused
   after the crate
 - Windows-safe production logging (stdout + rotating per-app log file) that
   records startup context, app directories, and job identifiers — never the
-  user's file paths
+  contents of the user's files, and never the paths of the files a transfer
+  moves
 - A user-visible failure surface: a startup failure or a panic shows a message
   box (with a matching log entry) instead of a window that never appears
 - Measured performance: startup, directory listings, deep trees, many small
@@ -75,6 +78,10 @@ automatically, and byte-offset resume of a partial file is deliberately refused
 - A restrictive CSP and a minimal Tauri capability set
 - Real test suites (Vitest + `cargo test`), a release-artifact smoke test, and
   CI on Linux and Windows
+
+`docs/release/RELEASE_1.0.md` is the production release document: version,
+supported platform, installation, functionality, verification, recovery, the
+security model, artifacts, and the explicit list of what is not supported.
 
 Not implemented yet: folder synchronization, scheduling, and the other Version 2+
 candidates in
@@ -222,6 +229,13 @@ discarded whole, and CrossPort says so before doing either.
   engine creates a directory 3,475 characters deep and copies a tree that deep
   on such a machine, and reports the Windows error verbatim on one where the
   limit still applies.
+- Source/destination containment is decided lexically, not by resolving the
+  filesystem: two spellings of the same location (an 8.3 short name, or a path
+  through a pre-existing junction or reparse point) are not recognized as the
+  same directory, and a destination path that traverses an existing junction is
+  resolved by the operating system, so files land wherever that junction
+  points. CrossPort never creates, plans through, copies, or removes reparse
+  points itself.
 - The installers are exercised as far as one version allows: a fresh install, a
   same-version reinstall, and an uninstall were all run against the built
   artifact, but a real version upgrade and a refused downgrade need a second

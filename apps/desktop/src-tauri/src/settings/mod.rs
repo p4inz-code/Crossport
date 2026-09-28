@@ -115,8 +115,16 @@ fn read_settings(path: &Path) -> AppResult<AppSettings> {
 
 /// Writes a settings document to `path`, creating the directory when needed.
 ///
-/// The value is validated first, then written to a temp file and renamed, so a
-/// crash mid-write cannot truncate the live settings file.
+/// The value is validated first, then written to a sibling temp file, flushed
+/// to the device, and renamed over the live path, so a crash mid-write cannot
+/// truncate the live settings file and a reader never observes a half-written
+/// one.
+///
+/// The temp name carries the process id and a counter, exactly as the durable
+/// document layer does: a fixed name (`.json.tmp`) would let two writers — two
+/// instances, or a retry overlapping the first — share one temp file and race
+/// on the rename. The name is always a sibling of `path`, so a generated name
+/// can only ever land where the settings file lives.
 fn write_settings(path: &Path, settings: &AppSettings) -> AppResult<()> {
     settings.validate()?;
 
@@ -132,20 +140,43 @@ fn write_settings(path: &Path, settings: &AppSettings) -> AppResult<()> {
     let contents = serde_json::to_string_pretty(settings)
         .map_err(|error| AppError::Internal(format!("failed to serialize settings: {error}")))?;
 
-    let temp_path = path.with_extension("json.tmp");
-    std::fs::write(&temp_path, contents).map_err(|error| {
+    let temp_path = temporary_path(path);
+    write_flushed(&temp_path, contents.as_bytes()).map_err(|error| {
         AppError::Internal(format!(
             "failed to write settings file {}: {error}",
             temp_path.display()
         ))
     })?;
     std::fs::rename(&temp_path, path).map_err(|error| {
+        // Leave nothing half-written behind when the rename is refused.
+        let _ = std::fs::remove_file(&temp_path);
         AppError::Internal(format!(
             "failed to finalize settings file {}: {error}",
             path.display()
         ))
     })?;
     Ok(())
+}
+
+/// Sibling path used for the atomic replacement of the settings document.
+fn temporary_path(path: &Path) -> PathBuf {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static NEXT_TEMPORARY: AtomicU64 = AtomicU64::new(0);
+    let serial = NEXT_TEMPORARY.fetch_add(1, Ordering::Relaxed);
+
+    let mut name = path.file_name().unwrap_or_default().to_os_string();
+    name.push(format!(".{}-{serial}.tmp", std::process::id()));
+    path.with_file_name(name)
+}
+
+/// Writes bytes and flushes them to the device before returning, so the bytes a
+/// rename exposes are already durable.
+fn write_flushed(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    use std::io::Write;
+
+    let mut file = std::fs::File::create(path)?;
+    file.write_all(bytes)?;
+    file.sync_all()
 }
 
 #[cfg(test)]
@@ -351,9 +382,15 @@ mod tests {
         write_settings(&path, &settings).expect("settings should be writable");
 
         assert!(path.is_file(), "settings.json should exist after a write");
+        let leftovers: Vec<String> = std::fs::read_dir(dir.join("config"))
+            .expect("the config directory is readable")
+            .filter_map(Result::ok)
+            .map(|entry| entry.file_name().to_string_lossy().into_owned())
+            .filter(|name| name.ends_with(".tmp"))
+            .collect();
         assert!(
-            !path.with_extension("json.tmp").exists(),
-            "the temp file must be renamed away"
+            leftovers.is_empty(),
+            "no temporary file may survive a write: {leftovers:?}"
         );
         assert_eq!(read_settings(&path).expect("file should load"), settings);
 
@@ -393,6 +430,39 @@ mod tests {
         write_settings(&path, &next).expect("second write");
 
         assert_eq!(read_settings(&path).expect("file should load"), next);
+
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn a_legacy_temporary_file_is_neither_reused_nor_removed() {
+        let (dir, path) = settings_path("settings-legacy-temp");
+        std::fs::create_dir_all(path.parent().expect("has a parent")).expect("config dir");
+        // The fixed name an older build used for its temp file.
+        let legacy = path.with_extension("json.tmp");
+        std::fs::write(&legacy, b"leftover from an older build").expect("the file is writable");
+
+        write_settings(&path, &AppSettings::default()).expect("the document is writable");
+
+        assert_eq!(
+            read_settings(&path).expect("the file should load"),
+            AppSettings::default()
+        );
+        assert_eq!(
+            std::fs::read(&legacy).expect("the legacy temporary file is still there"),
+            b"leftover from an older build",
+            "a newer writer must not claim a name it did not choose"
+        );
+        let temporary: Vec<PathBuf> = std::fs::read_dir(path.parent().expect("has a parent"))
+            .expect("the directory is readable")
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .filter(|candidate| candidate != &legacy && candidate != &path)
+            .collect();
+        assert!(
+            temporary.is_empty(),
+            "a unique temporary name must be renamed away: {temporary:?}"
+        );
 
         let _ = std::fs::remove_dir_all(dir);
     }

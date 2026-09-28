@@ -17,6 +17,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 use crate::errors::{AppError, AppResult};
+use crate::platform;
 
 /// Prefix every temporary transfer file starts with.
 pub const PARTIAL_PREFIX: &str = ".crossport-";
@@ -84,6 +85,10 @@ pub fn is_artifact_of(name: &str, job_id: &str) -> bool {
 ///
 /// Directories are walked without following links, unreadable directories are
 /// reported instead of failing the scan, and the visit budget bounds the work.
+/// "Link" is the platform's own test ([`platform::is_reparse_point`]), not
+/// `FileType::is_symlink`: on Windows a directory junction is a reparse point
+/// that `is_symlink` does not report, and descending one would let this scan
+/// (and the cleanup that consumes it) reach outside the tree it was given.
 pub fn scan(root: &Path, job_id: &str) -> ArtifactScan {
     let mut scan = ArtifactScan::default();
     let mut visited = 0usize;
@@ -127,7 +132,7 @@ pub fn scan(root: &Path, job_id: &str) -> ArtifactScan {
 
             // A reparse point is never descended and never treated as an
             // artifact, so a link cannot lead this scan out of the tree.
-            if metadata.file_type().is_symlink() {
+            if platform::is_reparse_point(&metadata) {
                 continue;
             }
 

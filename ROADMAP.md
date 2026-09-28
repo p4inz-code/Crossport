@@ -177,7 +177,44 @@ signing (there is no certificate in this repository), no installer publishing,
 and no V2 features. The remaining limits are written down in `README.md` under
 "Known limitations".
 
-## Phase 7 — Version 2 candidates
+## Phase 7 — Security and release hardening (complete)
+
+- [x] Security boundary reviewed end to end: typed IPC → Tauri commands → Rust
+      domain → filesystem → persistence/logging. Every security-relevant
+      decision stays in Rust; the webview holds only `core:default`
+- [x] Path handling reviewed: absolute-only normalization, null-byte and
+      `..`-escape rejection, lexical containment, destination-inside-source and
+      source-inside-destination refusal, and reparse points reported but never
+      planned through, copied, or removed
+- [x] Persistence and recovery reviewed: atomic unique-temp writes with fsync,
+      schema versioning with newer-schema refusal, damaged documents preserved
+      (`*.corrupt-<ms>.*`), history written before live state is forgotten, and
+      artifact matching by exact job-owned name
+- [x] Temporary artifacts reviewed: collision-safe names carrying the job
+      identifier, cleanup bounded to CrossPort-owned artifacts, and no false
+      completion — an unverified operation is never reported as successful
+- [x] Two hardening fixes: the recovery artifact scan now uses
+      `platform::is_reparse_point` (a Windows junction is not reported by
+      `FileType::is_symlink`, so the old check could descend one) and settings
+      writes use a unique temp name and `sync_all` like the document layer
+- [x] Dependency and capability surface reviewed: no HTTP client in the Windows
+      build, no fs/dialog/shell permission for the webview, no network access,
+      no telemetry, no updater, no secrets
+- [x] Release correctness: version consistency enforced across all four
+      manifests, README/FAQ/versioning/template corrected to describe the
+      product that exists, and the misleading cross-platform release workflow
+      removed
+- [x] The full gate re-run green (frontend lint/check/test/build, Rust
+      fmt/check/clippy/test, version sync), the production release built, and
+      both installers checksummed and verified
+- [x] `docs/release/RELEASE_1.0.md`: the production release document
+
+What Phase 7 deliberately did not do is add any feature. The next step is the
+1.0 freeze, which bumps the version to `1.0.0` and records the completed
+baseline. The interactive install/upgrade/uninstall pass recorded under Phase 6
+was not repeated in this pass (see `docs/release/RELEASE_1.0.md`).
+
+## Version 2 candidates
 
 Not started. Candidates from `docs/product/FEATURE_SPECIFICATION.md`: folder
 synchronization, watched folders, batch operations, and advanced transfer rules.

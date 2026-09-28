@@ -518,6 +518,63 @@ fn a_directory_named_like_an_artifact_is_not_reported() {
 }
 
 #[test]
+fn a_scan_never_follows_a_linked_directory_out_of_the_tree() {
+    let dir = unique_temp_dir("recovery-scan-link");
+    let destination = dir.join("destination");
+    let outside = dir.join("outside");
+    std::fs::create_dir_all(&destination).expect("destination");
+    std::fs::create_dir_all(&outside).expect("a directory outside the destination tree");
+
+    // The very artifact this job owns, but placed outside the tree the scan was
+    // given. Reaching it would mean a cleanup could delete a file the job never
+    // wrote where it was asked to. A directory link is a reparse point on every
+    // platform — Windows junctions are too, which is why the scan asks the
+    // platform predicate instead of `FileType::is_symlink` — so this is the
+    // property a junction would violate if the check were narrower.
+    let decoy = outside.join(".crossport-transfer-1-0.partial");
+    std::fs::write(&decoy, b"outside the tree").expect("decoy artifact");
+
+    let link = destination.join("escape");
+    if !try_symlink_dir(&outside, &link) {
+        // Windows without developer mode cannot create a directory link.
+        cleanup(&dir);
+        return;
+    }
+
+    let scan = scan(&destination, "transfer-1");
+
+    assert!(
+        scan.artifacts.is_empty(),
+        "a reparse point is never descended, so nothing outside the tree is reported: {:?}",
+        scan.artifacts
+    );
+    assert!(
+        decoy.is_file(),
+        "nothing outside the destination tree is ever touched"
+    );
+
+    cleanup(&dir);
+}
+
+/// Creates a directory link, returning `false` when the platform refuses
+/// (Windows without developer mode).
+fn try_symlink_dir(target: &Path, link: &Path) -> bool {
+    #[cfg(unix)]
+    {
+        std::os::unix::fs::symlink(target, link).is_ok()
+    }
+    #[cfg(windows)]
+    {
+        std::os::windows::fs::symlink_dir(target, link).is_ok()
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
+        let _ = (target, link);
+        false
+    }
+}
+
+#[test]
 fn a_scan_of_a_missing_root_reports_it_instead_of_failing() {
     let dir = unique_temp_dir("recovery-scan-missing");
 

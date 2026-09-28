@@ -4,6 +4,11 @@ The pass to run before tagging. It matches what the repository actually does —
 Windows artifacts built locally, no publishing automation — so nothing here
 describes a workflow that does not exist.
 
+`docs/release/RELEASE_1.0.md` is the release document this checklist verifies:
+version, platform, installation, functionality, verification, recovery, security
+model, artifacts, limitations, and what is deliberately not supported. Keep the
+two in step.
+
 ## Before tagging
 
 - [ ] Versions in sync: `bash scripts/check-versions.sh`
@@ -39,6 +44,22 @@ describes a workflow that does not exist.
 - [ ] Record the numbers from `cargo test --lib measure -- --ignored
       --nocapture` against `docs/development/PERFORMANCE.md` and update anything
       that moved materially
+
+## Security model (spot-check)
+
+- [ ] `apps/desktop/src-tauri/capabilities/default.json` still grants only
+      `core:default` — no fs, dialog, shell, or http permission for the webview
+- [ ] The production CSP in `tauri.conf.json` is unchanged, or a change is
+      justified: no `unsafe-eval`, no remote origins, `object-src 'none'`,
+      `form-action 'none'`, `frame-ancestors 'none'`
+- [ ] No new dependency, command, or plugin was added that performs network
+      access, telemetry, or update checking
+- [ ] `cargo tree` shows no HTTP client in the Windows build
+- [ ] Every new Tauri command validates its inputs in Rust and returns
+      `{ code, message }` via `AppResult`; nothing security-relevant is decided
+      in the frontend
+- [ ] Logs contain no file contents and no credentials
+      (`grep -rn "log::" apps/desktop/src-tauri/src`)
 
 ## Tag and publish
 

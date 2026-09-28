@@ -7,7 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- The recovery artifact scan now asks the platform's reparse-point predicate
+  (`platform::is_reparse_point`) instead of `FileType::is_symlink`. On Windows a
+  directory junction is a reparse point that `is_symlink` does not report, so
+  the old check descended one and could report — and therefore let a cleanup
+  delete — a file reached through it, outside the destination tree the scan was
+  given. The scan now behaves as its own contract and the rest of the engine
+  (planning and source inspection) already did. A regression test proves a linked
+  directory is never descended.
+- Settings writes use a unique temporary name (process id + counter) and
+  `sync_all`, matching the durable document layer. The fixed `settings.json.tmp`
+  name let two writers share one temporary file and race on the rename, and a
+  predictable name in a user-writable directory is the shape a symlink redirection
+  needs. A test proves a leftover file at the old name is neither reused nor
+  removed.
+
 ### Added
+
+- `docs/release/RELEASE_1.0.md`: the production release document — version,
+  supported platform, installation, core functionality, verification behavior,
+  recovery behavior, security model, artifact names and checksums, release
+  procedure, known limitations, and the explicit list of what is not supported.
+  `docs/release/RELEASE_CHECKLIST.md` gained a security-model spot-check and now
+  points at it.
+- A security-model section in the release checklist (capabilities unchanged, CSP
+  unchanged, no new network dependency, no HTTP client in the Windows build, no
+  file paths or contents in logs).
 
 - Windows production readiness: `tauri.conf.json` now carries the publisher,
   copyright, license file, description, and category, a current-user NSIS
@@ -227,8 +254,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tests: service, store, schema, formatter, and page tests on the frontend;
   platform, filesystem, drive, state, and error tests in Rust.
 - Frontend test infrastructure (Vitest + Testing Library) and Rust unit tests.
-- CI pipeline (lint, biome, build, frontend/backend tests, version sync) and a
-  release workflow.
+- CI pipeline (lint, biome, build, frontend/backend tests, version sync).
 - `windows-sys` (Windows-only) for drive-letter enumeration.
 - Repository hygiene: root README, MIT license, changelog, contributor and
   security docs, editor configs, and operational scripts.
@@ -248,6 +274,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   were corrected where they described workflows that do not exist — a release
   workflow building macOS and Linux bundles, an update server, publishing
   automation — and now describe what the repository actually does.
+- The FAQ's backend contract was brought back in step with the code: it listed
+  seven commands and six error codes, and now lists the command surface by
+  domain and every error category, with `lib.rs` named as the authoritative
+  command list. `README.md` records lexical (not resolved) path containment as a
+  limitation, including that a destination traversing an existing junction is
+  resolved by the operating system.
 - A verification failure fails its item and the job, and reports what was
   expected and what was found, instead of a job ending as a plain success with
   only a byte count behind it.
@@ -299,6 +331,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- The `.github/workflows/release.yml` workflow. It built desktop bundles on
+  Ubuntu, Windows, and macOS and created a draft GitHub release, which the
+  project's own release process, CI documentation, and README say does not
+  happen — releases are built locally on Windows and published by hand, and no
+  macOS or Linux artifact is built or tested. `VERSIONING.md` now describes the
+  actual process, and `RELEASE_TEMPLATE.md` no longer promises macOS and Linux
+  downloads.
 - Empty placeholder workspace packages (`packages/*`), placeholder Rust
   commands/modules/models that returned `NotImplemented`, dead frontend stores
   and types, and empty documentation stubs.
