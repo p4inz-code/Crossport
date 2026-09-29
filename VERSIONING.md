@@ -16,10 +16,13 @@ The version must be kept identical in every manifest:
 can never drift across manifests. Always run `bash scripts/check-versions.sh`
 after any version change.
 
-## Pre-1.0
+## 1.0 and beyond
 
-While the product is pre-1.0, the minor version represents a release
-increment and the patch version represents fixes on the current increment.
+CrossPort 1.0.0 is the first production release and the frozen development
+baseline (`git tag v1.0.0`). While the baseline is frozen, only critical
+security fixes, critical production bugs, and release-blocking corrections may
+change it — each as a patch release (`1.0.x`). New features, architectural
+expansion, and V2 work do not enter this line.
 
 ## Release process
 

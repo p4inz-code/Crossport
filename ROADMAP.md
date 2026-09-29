@@ -209,10 +209,24 @@ and no V2 features. The remaining limits are written down in `README.md` under
       both installers checksummed and verified
 - [x] `docs/release/RELEASE_1.0.md`: the production release document
 
-What Phase 7 deliberately did not do is add any feature. The next step is the
-1.0 freeze, which bumps the version to `1.0.0` and records the completed
-baseline. The interactive install/upgrade/uninstall pass recorded under Phase 6
-was not repeated in this pass (see `docs/release/RELEASE_1.0.md`).
+What Phase 7 deliberately did not do is add any feature. The interactive
+install/upgrade/uninstall pass recorded under Phase 6 was not repeated in this
+pass (see `docs/release/RELEASE_1.0.md`).
+
+## Release 1.0 — production baseline (complete, frozen)
+
+- [x] Version bumped to `1.0.0` across all four manifests and `Cargo.lock`, with
+      `bash scripts/check-versions.sh` green
+- [x] The full gate re-run green and the production artifacts rebuilt from the
+      1.0 sources with their SHA-256 checksums
+- [x] Documentation brought in step with the released version: `README.md`,
+      `CHANGELOG.md`, `VERSIONING.md`, and `docs/release/RELEASE_1.0.md`
+- [x] Release commit and annotated tag `v1.0.0` recording the baseline
+
+The 1.0 development baseline is **frozen**. Only critical security fixes,
+critical production bugs, and release-blocking corrections may change the frozen
+`1.0.x` line during the maintenance hold. No new features and no V2 work enter
+it. See `VERSIONING.md`.
 
 ## Version 2 candidates
 

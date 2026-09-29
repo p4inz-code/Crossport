@@ -6,9 +6,11 @@ Free forever. Offline first. No accounts, no ads, no telemetry.
 
 ## Status
 
-Phases 0–7 are complete: the engine, the interface, verification, recovery, and
-history all work end to end, and the Windows production build is hardened and
-released from a committed lockfile. The application builds into Windows
+**CrossPort 1.0.0 is released** (tag `v1.0.0`) and the development baseline is
+frozen: only critical security fixes and release-blocking corrections change it
+until the planned maintenance hold ends. Phases 0–7 are complete — the engine,
+the interface, verification, recovery, and history all work end to end, and the
+Windows production build is hardened and released from a committed lockfile. The application builds into Windows
 installers (NSIS and MSI), starts on a machine with no Node, pnpm, Cargo, or
 repository anywhere in sight, and its performance at the largest datasets the
 backend can produce is measured and bounded by tests. The repository currently

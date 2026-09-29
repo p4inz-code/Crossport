@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-09-29
+
+First production release. Windows only; feature complete, security hardened,
+and frozen as the 1.0 development baseline (`v1.0.0`). Everything below is what
+this release contains relative to `v0.1.0-foundation`.
+
 ### Security
 
 - The recovery artifact scan now asks the platform's reparse-point predicate

@@ -1,6 +1,6 @@
 # CrossPort 1.0 — production release document
 
-Status: feature complete and security hardened. Windows only.
+Status: released, security hardened, and frozen. Windows only.
 
 This is the single document to read before shipping a build. It states what the
 release contains, what it proves, how to build and verify it, and what it
@@ -11,14 +11,13 @@ repository; nothing in it is aspirational.
 
 | Manifest | Version |
 | --- | --- |
-| `package.json` (root, canonical) | `0.1.0` |
-| `apps/desktop/package.json` | `0.1.0` |
-| `apps/desktop/src-tauri/tauri.conf.json` | `0.1.0` |
-| `apps/desktop/src-tauri/Cargo.toml` | `0.1.0` |
+| `package.json` (root, canonical) | `1.0.0` |
+| `apps/desktop/package.json` | `1.0.0` |
+| `apps/desktop/src-tauri/tauri.conf.json` | `1.0.0` |
+| `apps/desktop/src-tauri/Cargo.toml` | `1.0.0` |
 
-"1.0" is the name of this milestone (the feature-complete, hardened release).
-The version in the manifests is still `0.1.0`; the bump to `1.0.0` is the freeze
-step, and `scripts/check-versions.sh` enforces that all four move together.
+This is the released 1.0 baseline. `scripts/check-versions.sh` enforces that all
+four manifests move together, and the annotated tag `v1.0.0` records it.
 
 ## Supported platform
 
@@ -36,8 +35,8 @@ guarded blocks, but that is a design property, not a supported platform.
 
 ## Installation
 
-1. Run `CrossPort_0.1.0_x64-setup.exe` (NSIS, current user, installs into
-   `%LOCALAPPDATA%\CrossPort`) or `CrossPort_0.1.0_x64_en-US.msi` (WiX,
+1. Run `CrossPort_1.0.0_x64-setup.exe` (NSIS, current user, installs into
+   `%LOCALAPPDATA%\CrossPort`) or `CrossPort_1.0.0_x64_en-US.msi` (WiX,
    per-machine, needs elevation).
 2. Start CrossPort from the Start menu. No account, no setup step, no network
    call.
@@ -157,9 +156,16 @@ metadata was preserved.
   follows for planning, or removes reparse points.
 - **Paths over 260 characters** need Windows long-path support.
 - **A real version upgrade and a refused downgrade** have not been exercised,
-  because only one version exists. Re-check both at the first version bump.
-- **The MSI was built but not installed** in the recorded verification pass,
-  because it requires elevation.
+  because only one shipped version exists. Re-check both at the first version
+  after 1.0.0.
+- **The MSI is built but not installed** in the recorded verification pass,
+  because it requires elevation. The NSIS install / same-version reinstall /
+  uninstall cycle was exercised against the built installer during the Phase 6
+  pass (`docs/development/RELEASE_PROCESS.md`); it was **not** re-run for the
+  1.0.0 artifacts. For the 1.0.0 build, verification was the artifact smoke test:
+  the built `CrossPort.exe` starting on an isolated desktop with no development
+  tools in its environment, writing its startup line, showing a window, and
+  exiting cleanly. Re-run the full installer cycle before publishing.
 
 ## Artifact names and checksums
 
@@ -168,8 +174,8 @@ metadata was preserved.
 
 | Artifact | Path |
 | --- | --- |
-| NSIS installer | `nsis/CrossPort_0.1.0_x64-setup.exe` |
-| WiX MSI | `msi/CrossPort_0.1.0_x64_en-US.msi` |
+| NSIS installer | `nsis/CrossPort_1.0.0_x64-setup.exe` |
+| WiX MSI | `msi/CrossPort_1.0.0_x64_en-US.msi` |
 | Executable | `release/CrossPort.exe` |
 | Checksums | `bundle/checksums.txt` (SHA-256 per artifact) |
 
