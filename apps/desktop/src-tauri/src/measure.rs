@@ -6,10 +6,16 @@
  * catastrophes a regression would cause — a measurement that fails on a busy
  * machine helps nobody, but a measurement that cannot finish at all does.
  *
+ * The scenarios take a shared lock and run one at a time: a wall-clock or
+ * process-CPU figure measured while another scenario hammers the same process
+ * is not a measurement, and the parallel default would report a genuinely idle
+ * engine as spinning.
+ *
  * Compiled only for tests, so the release binary carries none of it.
  * ========================================================================== */
 
 use std::path::Path;
+use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use crate::filesystem::test_support::unique_temp_dir;
@@ -22,6 +28,24 @@ use crate::verification::VerificationPolicy;
 /// suite proves the same property; here it is a measurement ceiling.
 const LARGE_FILE_BYTES: u64 = 512 * 1024 * 1024;
 const MEMORY_CEILING_BYTES: u64 = 64 * 1024 * 1024;
+
+/// Serializes the measurement scenarios against each other.
+///
+/// Every figure here is a wall-clock or process-wide CPU reading, and the test
+/// harness runs a binary's tests in parallel by default. Left unguarded, the
+/// idle-engine check counts the CPU the other scenarios spend beside it and
+/// reports a quiet engine as spinning, and every timing is inflated by whatever
+/// else happens to be running. The lock costs nothing on an ordinary
+/// `cargo test`, because none of these scenarios run unless they are asked for.
+static MEASURE_GUARD: Mutex<()> = Mutex::new(());
+
+/// Takes the measurement lock, tolerating a scenario that panicked while
+/// holding it so one failure does not wedge the rest of the suite.
+fn measure_guard() -> std::sync::MutexGuard<'static, ()> {
+    MEASURE_GUARD
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
 
 fn report(name: &str, detail: &str, started: Instant) {
     println!(
@@ -85,6 +109,7 @@ fn populate_directory(directory: &Path, files: usize, bytes_each: u64) {
 #[test]
 #[ignore = "opt-in measurement"]
 fn measure_directory_listing() {
+    let _serial = measure_guard();
     let workspace = unique_temp_dir("measure-listing");
     let wanted = workspace.join("many");
     populate_directory(&wanted, 10_000, 0);
@@ -112,6 +137,7 @@ fn measure_directory_listing() {
 #[test]
 #[ignore = "opt-in measurement"]
 fn measure_deep_tree_plan() {
+    let _serial = measure_guard();
     let workspace = unique_temp_dir("measure-deep");
     let root = workspace.join("deep");
     let mut current = root.clone();
@@ -144,6 +170,7 @@ fn measure_deep_tree_plan() {
 #[test]
 #[ignore = "opt-in measurement"]
 fn measure_many_small_files() {
+    let _serial = measure_guard();
     let workspace = unique_temp_dir("measure-small");
     let source = workspace.join("small");
     populate_directory(&source, 2_000, 4 * 1024);
@@ -169,6 +196,7 @@ fn measure_many_small_files() {
 #[test]
 #[ignore = "opt-in measurement"]
 fn measure_large_file_streaming() {
+    let _serial = measure_guard();
     let workspace = unique_temp_dir("measure-large");
     let source = workspace.join("large");
     std::fs::create_dir_all(&source).expect("the source exists");
@@ -240,6 +268,7 @@ fn peek_growth(baseline: Option<u64>, peak: Option<u64>) -> u64 {
 #[test]
 #[ignore = "opt-in measurement"]
 fn measure_archive_with_full_history() {
+    let _serial = measure_guard();
     for limit in [DEFAULT_HISTORY_LIMIT, MAX_HISTORY_LIMIT] {
         let workspace = unique_temp_dir(&format!("measure-archive-{limit}"));
         let (archive, _, _) = crate::archive::TransferArchive::open(&workspace, limit);
@@ -342,6 +371,7 @@ fn sample_record(index: usize) -> crate::history::HistoryRecord {
 #[test]
 #[ignore = "opt-in measurement"]
 fn measure_path_length_limit() {
+    let _serial = measure_guard();
     let workspace = unique_temp_dir("measure-depth");
     let mut current = workspace.join("deep");
     std::fs::create_dir_all(&current).expect("the first level is creatable");
@@ -382,6 +412,7 @@ fn write_file_bytes_checked(path: &Path, bytes: u64) -> bool {
 #[test]
 #[ignore = "opt-in measurement"]
 fn measure_archive_cold_start() {
+    let _serial = measure_guard();
     let workspace = unique_temp_dir("measure-cold");
     let started = Instant::now();
     let (archive, history_status, state_status) =
@@ -404,6 +435,9 @@ fn measure_archive_cold_start() {
 #[test]
 #[ignore = "opt-in measurement"]
 fn measure_idle_engine_cpu() {
+    // Holds the measurement lock: this figure is only meaningful while no other
+    // scenario is running in the same process.
+    let _serial = measure_guard();
     let engine = TransferEngine::new(1);
     let Some(start_cpu) = process_cpu_time() else {
         println!("MEASURE idle engine CPU: host did not report process times");
