@@ -4,10 +4,11 @@ The pass to run before tagging. It matches what the repository actually does —
 Windows artifacts built locally, no publishing automation — so nothing here
 describes a workflow that does not exist.
 
-`docs/release/RELEASE_1.0.md` is the release document this checklist verifies:
-version, platform, installation, functionality, verification, recovery, security
-model, artifacts, limitations, and what is deliberately not supported. Keep the
-two in step.
+`docs/release/RELEASE_1.1.0.md` is the release document this checklist verifies
+for the current line (and `RELEASE_1.0.md` for the frozen baseline): version,
+platform, installation, functionality, verification, recovery, security model,
+artifacts, limitations, and what is deliberately not supported. Keep them in
+step.
 
 ## Before tagging
 
@@ -42,8 +43,11 @@ two in step.
       `%APPDATA%\com.crossport.app` and `%LOCALAPPDATA%\com.crossport.app` are
       still there
 - [ ] Record the numbers from `cargo test --lib measure -- --ignored
-      --nocapture` against `docs/development/PERFORMANCE.md` and update anything
-      that moved materially
+      --nocapture --test-threads=1` against `docs/development/PERFORMANCE.md`
+      and update anything that moved materially
+- [ ] Confirm no horizontal overflow and no clipped primary controls at
+      1024×720, 1280×720, 1366×768, 1440×900, 1920×1080, a maximized window, a
+      restored window, and a narrow window, in both light and dark themes
 
 ## Security model (spot-check)
 

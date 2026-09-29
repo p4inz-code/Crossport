@@ -42,11 +42,29 @@ Product and platform polish on top of the released 1.0.0 baseline. The tagged
   and tested target; Linux and macOS are application foundation only.
 - `docs/product/BRAND_GUIDELINES.md` documents the finalized logo and how to
   regenerate the platform icons from it.
+- The whole interface now draws every colour, spacing, radius, and type value
+  from the shared token set. The History and Recovery surfaces were rebuilt on
+  the design system (they previously carried hard-coded pixel values), the
+  volume cards, transfer cards, dialog, and sidebar were given a consistent
+  hierarchy, and the transfer composer now states its destination as a panel
+  rather than a muted caption.
 
 ### Fixed
 
-- Nothing user-affecting; no engine, persistence, or security behaviour changed
-  in this release.
+- Four design variables that components referenced were never defined:
+  `--color-surface-muted` (the History row hover therefore had no background at
+  all), `--color-accent`, `--font-normal`, and `--space-3-5`. All four usages
+  now resolve to real tokens, and a repository-wide check confirms no
+  stylesheet references an undefined variable.
+- A card whose header was its only content drew a stray rule beneath the
+  header; the separator is now dropped when no body follows it.
+- The measurement harness runs its scenarios one at a time. The idle-engine
+  check reads process-wide CPU, so running it beside the other seven scenarios
+  in the parallel default counted their work and reported a genuinely idle
+  engine as spinning. The scenarios now serialize, and the idle engine measures
+  0 ms of CPU over two seconds.
+
+No engine, persistence, security, or IPC behaviour changed in this release.
 
 ## [1.0.0] - 2026-09-29
 

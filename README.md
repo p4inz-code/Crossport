@@ -195,7 +195,7 @@ Two further checks are run when preparing a release:
 
 ```bash
 cargo test --test artifact_smoke -- --nocapture        # starts the built app
-cargo test --lib measure -- --ignored --nocapture     # performance numbers
+cargo test --lib measure -- --ignored --nocapture --test-threads=1   # performance numbers
 bash scripts/release.sh                               # installers + checksums
 ```
 
