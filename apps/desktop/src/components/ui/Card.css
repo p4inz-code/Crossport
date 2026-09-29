@@ -19,6 +19,12 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+/* A card whose header is its whole content is a compact fact tile, not a card
+   with a hole under it: the separating rule is dropped when nothing follows. */
+.card-header:last-child {
+  border-bottom: 0;
+}
+
 .card-header__title {
   font-size: var(--text-md);
   font-weight: var(--font-semibold);

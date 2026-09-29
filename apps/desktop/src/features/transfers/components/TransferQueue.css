@@ -23,7 +23,26 @@
   padding: var(--space-4);
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-border-strong);
   border-radius: var(--radius-md);
+}
+
+/* The status pill already names the state; the matching left edge lets the eye
+   find every active, failed, or finished job without reading each card. */
+.transfer-card:has(.transfer-card__status--active) {
+  border-left-color: var(--color-primary);
+}
+
+.transfer-card:has(.transfer-card__status--success) {
+  border-left-color: var(--color-success);
+}
+
+.transfer-card:has(.transfer-card__status--warning) {
+  border-left-color: var(--color-warning);
+}
+
+.transfer-card:has(.transfer-card__status--danger) {
+  border-left-color: var(--color-danger);
 }
 
 .transfer-card__header {

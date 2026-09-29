@@ -1,14 +1,16 @@
 /* ==========================================================================
  * History page
  * A list of records that reads like a log: status first, then what moved, then
- * the numbers, then the verification verdict.
+ * the numbers, then the verification verdict. Every value comes from the shared
+ * token set, so a record reads with the same spacing, type scale, and state
+ * colours as the rest of the application in both themes.
  * ========================================================================== */
 
 /* A fieldset for its grouping semantics, reset so it lays out as a plain row. */
 .history-filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-2);
   margin: 0;
   padding: 0;
   border: 0;
@@ -16,69 +18,81 @@
 
 .history-page__retention {
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
 
 .history-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-1-5);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
+/* Status leads, then the source-to-destination mapping, then the numbers, the
+   verdict, and the size. The status column is fixed enough to align down the
+   list; the path column takes the slack. */
 .history-row {
   display: grid;
-  grid-template-columns: minmax(110px, 0.9fr) minmax(180px, 2fr) minmax(
-      150px,
-      1.2fr
-    ) minmax(140px, 1.2fr) auto;
-  gap: 12px;
+  grid-template-columns:
+    minmax(7rem, 0.9fr)
+    minmax(11rem, 2fr)
+    minmax(9.5rem, 1.2fr)
+    minmax(8.75rem, 1.2fr)
+    auto;
+  gap: var(--space-3);
   align-items: center;
   width: 100%;
-  padding: 10px 12px;
+  padding: var(--space-2-5) var(--space-3);
   border: 1px solid var(--color-border);
-  border-left-width: 3px;
-  border-radius: 8px;
-  background: var(--color-surface);
+  border-left: 3px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
   text-align: left;
-  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
 .history-row:hover {
-  border-color: var(--color-border-strong, var(--color-border));
-  background: var(--color-surface-muted);
+  border-color: var(--color-border-strong);
+  background-color: var(--color-surface-subtle);
 }
 
-.history-row--selected {
-  outline: 2px solid var(--color-accent, #2563eb);
+.history-row:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
   outline-offset: 1px;
 }
 
+.history-row--selected {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-subtle);
+}
+
 .history-row--success {
-  border-left-color: var(--color-success, #16a34a);
+  border-left-color: var(--color-success);
 }
 
 .history-row--warning {
-  border-left-color: var(--color-warning, #d97706);
+  border-left-color: var(--color-warning);
 }
 
 .history-row--danger {
-  border-left-color: var(--color-danger, #dc2626);
+  border-left-color: var(--color-danger);
 }
 
 .history-row--neutral {
-  border-left-color: var(--color-border-strong, var(--color-border));
+  border-left-color: var(--color-border-strong);
 }
 
 .history-row__status {
   display: inline-flex;
-  gap: 6px;
   align-items: center;
-  font-size: 0.8125rem;
-  font-weight: 600;
+  gap: var(--space-1-5);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
   color: var(--color-text);
 }
 
@@ -92,7 +106,7 @@
 .history-row__source,
 .history-row__destination {
   overflow: hidden;
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -103,41 +117,61 @@
 }
 
 .history-row__numbers {
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
 }
 
 .history-row__meta {
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
 }
 
 .history-row__verification {
   display: flex;
   flex-direction: column;
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   color: var(--color-text-muted);
 }
 
 .history-row__verification--failed {
-  color: var(--color-danger, #dc2626);
-  font-weight: 600;
+  color: var(--color-danger);
+  font-weight: var(--font-semibold);
 }
 
 .history-row__policy {
-  font-size: 0.6875rem;
+  font-size: var(--text-xs);
   color: var(--color-text-muted);
 }
 
 .history-row__bytes {
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
   color: var(--color-text-muted);
   text-align: right;
 }
 
+/* --- Details panel ------------------------------------------------------- */
+
+/* The tone of the record is carried onto the panel as a left accent, so the
+   panel a row opens is visibly the same record. */
+.history-details {
+  border-left: 3px solid var(--color-border-strong);
+}
+
+.history-details--success {
+  border-left-color: var(--color-success);
+}
+
+.history-details--warning {
+  border-left-color: var(--color-warning);
+}
+
+.history-details--danger {
+  border-left-color: var(--color-danger);
+}
+
 .history-details__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px 20px;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--space-3) var(--space-5);
   margin: 0;
 }
 
@@ -150,91 +184,93 @@
 }
 
 .history-details__field dt {
-  font-size: 0.6875rem;
-  font-weight: 600;
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tracking-wide);
   color: var(--color-text-muted);
 }
 
 .history-details__field dd {
-  margin: 3px 0 0;
-  font-size: 0.8125rem;
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
   overflow-wrap: anywhere;
 }
 
 .history-details__path {
   display: block;
-  font-family: var(--font-mono, monospace);
-  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
 }
 
 .history-details__verification--failed {
-  color: var(--color-danger, #dc2626);
-  font-weight: 600;
+  color: var(--color-danger);
+  font-weight: var(--font-semibold);
 }
 
 .history-details__failure {
-  margin-top: 14px;
-  padding: 12px;
-  border: 1px solid var(--color-danger, #dc2626);
-  border-radius: 8px;
+  margin-top: var(--space-4);
+  padding: var(--space-3);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-md);
+  background-color: var(--color-danger-subtle);
 }
 
 .history-details__failure-title {
   display: flex;
-  gap: 6px;
   align-items: center;
+  gap: var(--space-1-5);
   margin: 0;
-  font-size: 0.8125rem;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
 }
 
 .history-details__failure-code {
-  margin: 6px 0 0;
-  font-family: var(--font-mono, monospace);
-  font-size: 0.75rem;
-  color: var(--color-danger, #dc2626);
+  margin: var(--space-1-5) 0 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-danger);
 }
 
 .history-details__failure-message {
-  margin: 4px 0 0;
-  font-size: 0.8125rem;
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
   overflow-wrap: anywhere;
 }
 
 .history-details__issues {
-  margin-top: 14px;
+  margin-top: var(--space-4);
 }
 
 .history-details__issues-title {
   margin: 0;
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tracking-wide);
   color: var(--color-text-muted);
 }
 
 .history-details__issue-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  max-height: 220px;
-  margin: 6px 0 0;
+  gap: var(--space-1);
+  max-height: 14rem;
+  margin: var(--space-1-5) 0 0;
   padding: 0;
   overflow-y: auto;
   list-style: none;
 }
 
 .history-details__issue {
-  font-family: var(--font-mono, monospace);
-  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
   overflow-wrap: anywhere;
   color: var(--color-text-muted);
 }
 
-@media (width <= 900px) {
+/* Narrow windows: the row becomes a stack rather than squeezing five columns. */
+@media (max-width: 56rem) {
   .history-row {
     grid-template-columns: 1fr;
   }

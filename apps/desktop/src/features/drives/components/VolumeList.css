@@ -1,5 +1,9 @@
 /* ==========================================================================
  * VolumeList component styles
+ * A volume reads as a device, not a generic card: identity and capacity lead,
+ * the root and filesystem type are supporting detail, and the states the user
+ * has to notice (reachable, read-only, selected) change the edge, not the
+ * whole surface.
  * ========================================================================== */
 
 .volume-list {
@@ -20,12 +24,13 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: var(--space-1-5);
+  gap: var(--space-2);
   width: 100%;
   padding: var(--space-3);
   text-align: left;
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
+  border-left: 3px solid transparent;
   border-radius: var(--radius-md);
   transition:
     background-color var(--transition-fast),
@@ -34,6 +39,7 @@
 
 .volume-card:hover {
   background-color: var(--color-surface-subtle);
+  border-left-color: var(--color-border-strong);
 }
 
 .volume-card:focus-visible {
@@ -41,8 +47,11 @@
   outline-offset: 1px;
 }
 
+/* Selection is unmistakable: a primary edge, a tinted surface, and the accent
+   colour on the label. */
 .volume-card--selected {
   border-color: var(--color-primary);
+  border-left-color: var(--color-primary);
   background-color: var(--color-primary-subtle);
 }
 
@@ -56,6 +65,15 @@
   min-width: 0;
 }
 
+.volume-card__heading > svg {
+  flex: none;
+  color: var(--color-text-muted);
+}
+
+.volume-card--selected .volume-card__heading > svg {
+  color: var(--color-primary);
+}
+
 .volume-card__label {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -63,6 +81,7 @@
 }
 
 .volume-card__note {
+  flex: none;
   padding: 0 var(--space-1-5);
   border-radius: var(--radius-full);
   background-color: var(--color-warning-subtle);
@@ -100,24 +119,31 @@
 .volume-card__capacity {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-1-5);
 }
 
 .volume-card__meter {
   display: block;
-  height: 0.25rem;
+  height: 0.3125rem;
   border-radius: var(--radius-full);
   background-color: var(--color-surface-subtle);
   overflow: hidden;
 }
 
+.volume-card--selected .volume-card__meter {
+  background-color: var(--color-surface);
+}
+
 .volume-card__meter-fill {
   display: block;
   height: 100%;
+  border-radius: var(--radius-full);
   background-color: var(--color-primary);
+  transition: width var(--transition-normal);
 }
 
 .volume-card__capacity-text {
   font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
   color: var(--color-text-muted);
 }

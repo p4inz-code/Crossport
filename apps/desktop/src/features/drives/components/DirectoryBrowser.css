@@ -284,10 +284,20 @@
   font-weight: var(--font-medium);
 }
 
+/* A live selection is the source of the next transfer, so the status line
+   turns primary while one exists: the state the whole page is about is the one
+   that looks the strongest. */
+.browser__status:has(.browser__selection) {
+  border-top-color: var(--color-primary);
+  background-color: var(--color-primary-subtle);
+  color: var(--color-text);
+}
+
 .browser__selection {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
   color: var(--color-text);
+  font-weight: var(--font-medium);
 }

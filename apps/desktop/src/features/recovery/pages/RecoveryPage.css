@@ -1,43 +1,69 @@
 /* ==========================================================================
  * Recovery page
+ * One card per interrupted transfer. The outcome is carried as a left accent
+ * and a coloured pill, so the list is scannable at a glance while every claim
+ * on the card still comes from the archive.
  * ========================================================================== */
 
 .recovery-page__list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
+/* The outcome tone colours the card's left edge; the card body stays neutral. */
+.recovery-card {
+  border-left: 3px solid var(--color-border-strong);
+}
+
+.recovery-card--completed_before_crash {
+  border-left-color: var(--color-success);
+}
+
+.recovery-card--restart_required {
+  border-left-color: var(--color-warning);
+}
+
+.recovery-card--source_missing,
+.recovery-card--destination_unavailable,
+.recovery-card--unsupported {
+  border-left-color: var(--color-danger);
+}
+
 .recovery-card__outcome {
   padding: var(--space-0-5) var(--space-2);
   border-radius: var(--radius-full);
-  background: var(--color-surface-subtle);
+  background-color: var(--color-surface-subtle);
   font-size: var(--text-xs);
   font-weight: var(--font-semibold);
   color: var(--color-text);
+  white-space: nowrap;
 }
 
 .recovery-card--completed_before_crash .recovery-card__outcome {
+  background-color: var(--color-success-subtle);
   color: var(--color-success);
 }
 
 .recovery-card--restart_required .recovery-card__outcome {
+  background-color: var(--color-warning-subtle);
   color: var(--color-warning);
 }
 
 .recovery-card--source_missing .recovery-card__outcome,
 .recovery-card--destination_unavailable .recovery-card__outcome,
 .recovery-card--unsupported .recovery-card__outcome {
+  background-color: var(--color-danger-subtle);
   color: var(--color-danger);
 }
 
 .recovery-card__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 12px 20px;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-3) var(--space-5);
   margin: 0;
 }
 
@@ -46,16 +72,16 @@
 }
 
 .recovery-card__field dt {
-  font-size: 0.6875rem;
-  font-weight: 600;
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tracking-wide);
   color: var(--color-text-muted);
 }
 
 .recovery-card__field dd {
-  margin: 3px 0 0;
-  font-size: 0.8125rem;
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
   overflow-wrap: anywhere;
 }
 
@@ -63,44 +89,51 @@
 .recovery-card__proof,
 .recovery-card__impact {
   display: flex;
-  gap: 8px;
   align-items: flex-start;
-  margin: 12px 0 0;
-  font-size: 0.8125rem;
-  line-height: 1.5;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
   color: var(--color-text-muted);
 }
 
+/* The proof is the one green claim on the page: it is the archive's own
+   evidence, not an inference. */
 .recovery-card__proof {
-  color: var(--color-success, #16a34a);
+  color: var(--color-success);
 }
 
 .recovery-card__failure {
-  margin: 12px 0 0;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--color-danger, #dc2626);
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--color-danger);
 }
 
 .recovery-card__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 14px;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
 }
 
 .recovery-page__notes {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .recovery-page__notes p {
   display: flex;
-  gap: 8px;
   align-items: flex-start;
+  gap: var(--space-2);
   margin: 0;
-  font-size: 0.8125rem;
-  line-height: 1.55;
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
   color: var(--color-text-muted);
+}
+
+.recovery-page__notes p > svg {
+  flex: none;
+  margin-top: 0.125rem;
 }
