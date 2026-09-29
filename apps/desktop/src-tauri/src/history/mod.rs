@@ -164,7 +164,7 @@ impl From<&VerificationSummary> for HistoryVerification {
             mismatched_files: summary.mismatched_files,
             failed_files: summary.failed_files,
             verified_bytes: summary.verified_bytes,
-            verdict: summary.verdict(),
+            verdict: summary.verdict.clone(),
         }
     }
 }

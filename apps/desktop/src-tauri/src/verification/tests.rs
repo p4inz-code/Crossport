@@ -583,7 +583,7 @@ fn a_single_mismatch_fails_the_whole_job_verdict() {
     assert_eq!(summary.status, VerificationStatus::Mismatch);
     assert!(!summary.is_proven());
     assert!(log.has_failures());
-    assert!(summary.verdict().contains("did not verify"));
+    assert!(summary.verdict.contains("did not verify"));
 }
 
 #[test]
@@ -600,7 +600,7 @@ fn a_log_that_only_skipped_reports_skipped_not_verified() {
     assert_eq!(summary.skipped_files, 2);
     assert_eq!(summary.verified_files, 0);
     assert!(!summary.is_proven());
-    assert_eq!(summary.verdict(), "not verified");
+    assert_eq!(summary.verdict, "not verified");
 }
 
 #[test]
@@ -682,19 +682,31 @@ fn a_resumed_summary_keeps_the_digest_algorithm_on_the_wire() {
         json["coverage"]["modifiedTimePreserved"],
         serde_json::json!(false)
     );
+    // The frontend contract requires this field: a summary that crosses the
+    // wire without it is rejected by the queue and the transfer never starts.
+    assert_eq!(
+        json["verdict"],
+        serde_json::json!(summary.verdict),
+        "the verdict line travels with the summary, not just its raw fields"
+    );
+    assert!(
+        summary.verdict.starts_with("verified ("),
+        "the verdict states the method that ran: {}",
+        summary.verdict
+    );
 }
 
 #[test]
 fn the_summary_verdict_always_describes_the_real_state() {
     assert!(VerificationSummary::pending(VerificationPolicy::Size)
-        .verdict()
+        .verdict
         .contains("not started"));
 
     let mut log = VerificationLog::new(VerificationPolicy::Checksum);
     log.set_planned_files(2);
     log.record(&verified(Path::new("a"), 2048));
     log.finish();
-    let verdict = log.summary(true).verdict();
+    let verdict = log.summary(true).verdict;
     assert!(verdict.contains("verified"), "{verdict}");
     assert!(verdict.contains("size_and_checksum"), "{verdict}");
     assert!(verdict.contains("2048 bytes"), "{verdict}");

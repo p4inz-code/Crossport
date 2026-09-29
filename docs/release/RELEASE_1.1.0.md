@@ -2,6 +2,11 @@
 
 Status: built and validated on Windows. Not code-signed. Windows only.
 
+> **Superseded by [1.1.1](RELEASE_1.1.1.md).** The 1.1.0 artifacts contain a
+> wire-contract defect that makes the transfer queue and the start-transfer
+> flow fail in the interface. This document is kept as the record of that
+> release and is not updated further.
+
 This is the current development release line, built on top of the frozen 1.0.0
 baseline. `docs/release/RELEASE_1.0.md` remains the document for 1.0.0; this
 file states what 1.1.0 adds, what was verified for it, and what it still does

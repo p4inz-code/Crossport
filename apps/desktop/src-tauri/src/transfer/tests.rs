@@ -1382,9 +1382,9 @@ fn a_copy_proves_its_size_when_the_policy_asks_for_it() {
         "this engine does not reapply metadata, and says so"
     );
     assert!(
-        verification.verdict().starts_with("verified (size"),
+        verification.verdict.starts_with("verified (size"),
         "the verdict states the method that ran: {}",
-        verification.verdict()
+        verification.verdict
     );
 
     engine.shutdown();
@@ -1456,7 +1456,7 @@ fn a_job_with_no_verification_reports_skipped_instead_of_verified() {
     assert_eq!(verification.skipped_files, 1);
     assert_eq!(verification.checked_files, 0);
     assert_eq!(verification.verified_files, 0);
-    assert_eq!(verification.verdict(), "not verified");
+    assert_eq!(verification.verdict, "not verified");
     assert!(
         !verification.coverage.size && !verification.coverage.checksum,
         "nothing about the bytes was checked, so nothing may be claimed"

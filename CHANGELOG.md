@@ -7,8 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-09-29
+
+Corrective release for the Windows 1.1 line. No new capabilities; the product
+behaves as documented once more.
+
 ### Fixed
 
+- **The transfer queue and the start-transfer flow work again.** The live
+  transfer snapshot did not serialize the verification verdict line the
+  frontend contract requires (`verificationSummarySchema.verdict`), so every
+  `start_transfer`, `list_transfers`, and `get_transfer` payload failed frontend
+  validation. Starting a transfer from the composer reported "unexpected
+  payload" and the Transfers page reported the queue as unavailable. The
+  rendered verdict now travels with the summary — exactly as the history record
+  already did — and a regression test asserts the serialized summary carries
+  it. The engine itself was unaffected: it moved the files correctly
+  throughout.
 - Corrected the documentation's downgrade claim. The installers do **not**
   refuse an older version over a newer one: the interactive NSIS installer
   reports the newer version and replaces it only after uninstalling it, and a

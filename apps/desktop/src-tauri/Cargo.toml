@@ -1,6 +1,6 @@
 [package]
 name = "crossport"
-version = "1.1.0"
+version = "1.1.1"
 description = "CrossPort desktop application backend"
 authors = ["CrossPort Contributors"]
 license = "MIT"

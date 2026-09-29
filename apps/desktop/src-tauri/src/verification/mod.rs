@@ -622,6 +622,10 @@ pub struct VerificationSummary {
     /// True when more discrepancies happened than are listed.
     pub mismatches_truncated: bool,
     pub error: Option<StoredError>,
+    /// One line the UI shows without reinterpreting any field. Rendered by the
+    /// backend so the queue, a history record, and every notification describe
+    /// the same run in the same words.
+    pub verdict: String,
 }
 
 impl VerificationSummary {
@@ -645,7 +649,9 @@ impl VerificationSummary {
             mismatches: Vec::new(),
             mismatches_truncated: false,
             error: None,
+            verdict: String::new(),
         }
+        .with_verdict()
     }
 
     /// Whether the data this summary covers was proven to have arrived.
@@ -653,8 +659,16 @@ impl VerificationSummary {
         self.status.is_proven()
     }
 
-    /// One line the UI can show without reinterpreting any field.
-    pub fn verdict(&self) -> String {
+    /// Fills the rendered verdict line from the rest of the summary.
+    fn with_verdict(mut self) -> Self {
+        self.verdict = self.render_verdict();
+        self
+    }
+
+    /// One line the UI can show without reinterpreting any field. Kept private:
+    /// `verdict` is the field that crosses the wire, so the rendered text and
+    /// the serialized text can never drift apart.
+    fn render_verdict(&self) -> String {
         match self.status {
             VerificationStatus::Verified => format!(
                 "verified ({}{})",
@@ -836,7 +850,9 @@ impl VerificationLog {
             mismatches: self.mismatches.clone(),
             mismatches_truncated: self.mismatch_count > self.mismatches.len() as u64,
             error: self.error.clone(),
+            verdict: String::new(),
         }
+        .with_verdict()
     }
 
     /// Freezes the duration once the job is done.

@@ -947,7 +947,7 @@ fn sanity_verification_proves_what_it_claims_on_real_files() {
         .expect("the job is accepted");
     let none = wait_for_status(&engine, &unverified.id, TransferStatus::Completed);
     assert_eq!(none.verification.status, VerificationStatus::Skipped);
-    assert_eq!(none.verification.verdict(), "not verified");
+    assert_eq!(none.verification.verdict, "not verified");
     assert_eq!(none.verification.checked_files, 0);
     assert!(
         !none.verification.coverage.size,

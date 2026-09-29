@@ -659,7 +659,7 @@ impl TransferContext {
                             .mismatched_files
                             .saturating_add(verification.failed_files),
                         verification.planned_files,
-                        verification.verdict(),
+                        verification.verdict,
                         runtime.counters.failed_items,
                         runtime
                             .counters
