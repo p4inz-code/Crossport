@@ -15,6 +15,13 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 
 /// What kind of storage a volume is.
+///
+/// The volume probe exists on Windows only (Linux and macOS are application
+/// foundation, see `docs/product/PLATFORM_SUPPORT.md`), so on every other
+/// target nothing outside this module's own tests constructs a variant. The
+/// type still ships on every target so the published volume model has one
+/// shape everywhere and the pure classification stays testable anywhere.
+#[cfg_attr(not(windows), allow(dead_code))]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum VolumeKind {
@@ -40,6 +47,10 @@ impl VolumeKind {
     /// The codes are the documented `DRIVE_*` constants; they are spelled out
     /// here instead of pulling in the `DRIVE_*` constants from windows-sys,
     /// which live behind a much larger feature than this crate needs.
+    ///
+    /// The Windows volume probe is the only caller outside this module's
+    /// tests, so on other targets the function is compiled but unused.
+    #[cfg_attr(not(windows), allow(dead_code))]
     pub fn from_windows_drive_type(code: u32) -> Self {
         match code {
             2 => Self::Removable,
