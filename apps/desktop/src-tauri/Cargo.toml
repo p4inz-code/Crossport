@@ -60,7 +60,7 @@ opt-level = 0
 # measurement harness), and the message box that reports a fatal startup
 # failure on a host with no console.
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.60", features = [
+windows-sys = { version = "0.61", features = [
     "Win32_Storage_FileSystem",
     "Win32_System_ProcessStatus",
     "Win32_System_Threading",
