@@ -41,6 +41,24 @@ jobs:
         working-directory: apps/desktop/src-tauri
     steps:
       - uses: actions/checkout@v4
+      # Tauri's Linux build links against glib, GTK, and WebKit. Without these
+      # the `glib-sys` build script fails and the job stops at `cargo check`.
+      - name: Install Linux system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            pkg-config \
+            libglib2.0-dev \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libxdo-dev \
+            file \
+            curl \
+            wget
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
