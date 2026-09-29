@@ -386,6 +386,11 @@ fn recover<T>(path: &Path, value: T, detail: String) -> LoadOutcome<T> {
 }
 
 /// Where an unusable document is preserved, e.g. `history.corrupt-1700000000000.json`.
+///
+/// The stamp only has millisecond resolution, so two documents preserved in
+/// the same millisecond would land on the same name — and the second `rename`
+/// would silently replace the first kept copy. The counter makes every copy
+/// stick, which is the whole point of keeping them.
 fn preserved_path(path: &Path) -> PathBuf {
     let stamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -401,7 +406,13 @@ fn preserved_path(path: &Path) -> PathBuf {
         .map(|extension| format!(".{}", extension.to_string_lossy()))
         .unwrap_or_default();
 
-    path.with_file_name(format!("{stem}.corrupt-{stamp}{extension}"))
+    let mut preserved = path.with_file_name(format!("{stem}.corrupt-{stamp}{extension}"));
+    let mut attempt = 1_u32;
+    while preserved.exists() {
+        preserved = path.with_file_name(format!("{stem}.corrupt-{stamp}-{attempt}{extension}"));
+        attempt += 1;
+    }
+    preserved
 }
 
 #[cfg(test)]
