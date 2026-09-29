@@ -371,25 +371,23 @@ fn a_failed_transfer_is_recorded_with_the_reason_it_failed_for() {
     let destination = workspace.join("out");
     std::fs::create_dir_all(&destination).expect("destination");
 
-    // A read-only file in the way, with the strategy that overwrites: the
-    // replace cannot happen, so the item fails and the job fails with it.
-    let blocked = destination.join("report.txt");
-    std::fs::write(&blocked, b"existing").expect("the blocker is written");
-    let mut permissions = std::fs::metadata(&blocked)
-        .expect("the blocker exists")
-        .permissions();
-    permissions.set_readonly(true);
-    std::fs::set_permissions(&blocked, permissions).expect("the blocker is read-only");
-
-    let queued = engine
-        .enqueue_request(request_for(
-            &[&source],
-            &destination,
-            TransferOperation::Copy,
-            ConflictStrategy::Replace,
-            VerificationPolicy::Size,
-        ))
-        .expect("the request is valid");
+    // Plan first, then remove the source, so the job fails while it runs rather
+    // than being turned away at planning time. Blocking the destination with a
+    // read-only file was the earlier way to fail this job, but that only fails
+    // on Windows: POSIX lets the owner of a writable directory unlink a
+    // read-only file, so the same setup completes normally there. A source that
+    // vanishes after planning fails identically on every platform — the same
+    // mechanism the engine's own failure tests use.
+    let plan = crate::transfer::plan::plan_for_start(&request_for(
+        &[&source],
+        &destination,
+        TransferOperation::Copy,
+        ConflictStrategy::Replace,
+        VerificationPolicy::Size,
+    ))
+    .expect("the plan succeeds");
+    std::fs::remove_file(&source).expect("the test owns the source");
+    let queued = engine.enqueue(plan).expect("the job is accepted");
     wait_for_status(&engine, &queued.id, TransferStatus::Failed);
 
     let record = wait_for_history(&archive, &queued.id);
@@ -409,8 +407,8 @@ fn a_failed_transfer_is_recorded_with_the_reason_it_failed_for() {
         .find(|issue| issue.reason == crate::transfer::TransferIssueReason::Failed)
         .expect("the failed item is recorded");
     let cause = issue.error.clone().expect("the item keeps its error");
-    assert!(
-        cause.code == "permission_denied" || cause.code == "io",
+    assert_eq!(
+        cause.code, "path_not_found",
         "the cause names what went wrong, got '{}'",
         cause.code
     );
@@ -419,26 +417,6 @@ fn a_failed_transfer_is_recorded_with_the_reason_it_failed_for() {
         &workspace.join("config").join(crate::recovery::STATE_FILE),
         &queued.id,
     );
-
-    // Leave the workspace removable: a read-only file cannot be deleted on
-    // Windows, and on Unix the write bit has to be put back by hand.
-    let mut permissions = std::fs::metadata(&blocked)
-        .expect("the blocker exists")
-        .permissions();
-    #[cfg(windows)]
-    {
-        // Clearing the attribute is exactly the intent here; the lint exists
-        // because it is a no-op on Unix, which the cfg keeps this branch away
-        // from.
-        #[allow(clippy::permissions_set_readonly_false)]
-        permissions.set_readonly(false);
-    }
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        permissions.set_mode(0o644);
-    }
-    std::fs::set_permissions(&blocked, permissions).expect("the blocker is writable again");
 
     engine.shutdown();
     clean_up(&workspace);

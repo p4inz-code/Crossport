@@ -178,6 +178,16 @@ where
                 status: LoadStatus::Missing,
             }
         }
+        // A path that runs through something which is not a directory can never
+        // hold the document. Windows reports that as not-found (the arm above)
+        // and POSIX as ENOTDIR; either way it is missing, not a document that
+        // had to be recovered.
+        Err(_) if crate::filesystem::blocking_file(path).is_some() => {
+            return LoadOutcome {
+                value: T::default(),
+                status: LoadStatus::Missing,
+            }
+        }
         Err(error) => {
             // Unreadable is not the same as absent, but it is not fatal either:
             // a locked or permission-denied file must not stop the app.

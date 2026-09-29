@@ -5,7 +5,10 @@
  * history (the retention cap), and a 500-job queue.
  *
  * Each test asserts a budget far above the measured cost on a development
- * machine, so it is a regression detector, not a benchmark. The baseline
+ * machine, so it is a regression detector, not a benchmark. On CI the budgets
+ * are multiplied by `CI_BUDGET_FACTOR`, because a shared runner measures the
+ * machine's load as much as the code's cost — the ratio a regression moves is
+ * still visible, without a busy host deciding the result. The baseline
  * recorded with the Phase 6 measurements (jsdom, Windows, Sep 2026):
  *
  * - DirectoryBrowser, 10,000 entries: first render 173 ms, one checkbox 6 ms
@@ -43,6 +46,18 @@ afterEach(cleanup);
 
 const now = () => globalThis.performance.now();
 
+/** Set by CI runners; absent on a development machine. */
+const CI = Boolean(
+  (
+    globalThis as {
+      process?: { env?: Record<string, string | undefined> };
+    }
+  ).process?.env?.CI,
+);
+
+/** A timing budget, relaxed only where the machine is shared with other jobs. */
+const budget = (milliseconds: number) => (CI ? milliseconds * 3 : milliseconds);
+
 /** The largest listing the backend will return. */
 const LISTING_ENTRIES = 10_000;
 /** The largest history the settings allow. */
@@ -69,7 +84,7 @@ describe("performance budgets", () => {
     directoryListingSchema.parse(listing);
     const took = now() - started;
 
-    expect(took).toBeLessThan(250);
+    expect(took).toBeLessThan(budget(250));
   });
 
   it("paints the largest listing without rendering every row", () => {
@@ -112,8 +127,8 @@ describe("performance budgets", () => {
     fireEvent.click(box);
     const click = now() - clickStarted;
 
-    expect(firstRender).toBeLessThan(1200);
-    expect(click).toBeLessThan(250);
+    expect(firstRender).toBeLessThan(budget(1200));
+    expect(click).toBeLessThan(budget(250));
   });
 
   it("renders and selects in the largest retained history", async () => {
@@ -168,8 +183,8 @@ describe("performance budgets", () => {
     fireEvent.click(row);
     const select = now() - selectStarted;
 
-    expect(firstRender).toBeLessThan(2500);
-    expect(select).toBeLessThan(1_000);
+    expect(firstRender).toBeLessThan(budget(2500));
+    expect(select).toBeLessThan(budget(1_000));
   });
 
   it("renders a long queue", () => {
@@ -196,6 +211,6 @@ describe("performance budgets", () => {
     );
     const took = now() - started;
 
-    expect(took).toBeLessThan(2000);
+    expect(took).toBeLessThan(budget(2000));
   });
 });

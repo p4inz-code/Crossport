@@ -11,7 +11,30 @@ pub mod directory;
 pub mod metadata;
 pub mod path;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
+
+/// The existing entry in front of `path` that is not a directory, if there is
+/// one.
+///
+/// A path that runs through a file can never exist. Windows reports that as
+/// "not found" and POSIX as ENOTDIR, so callers that must reach the same
+/// verdict on both platforms ask here instead of reading the OS's error kind —
+/// `io::ErrorKind::NotADirectory` would raise the crate's declared MSRV
+/// (1.77.2) just to reword an error.
+pub(crate) fn blocking_file(path: &Path) -> Option<PathBuf> {
+    let mut ancestor = path.parent();
+    while let Some(candidate) = ancestor {
+        if let Ok(metadata) = std::fs::symlink_metadata(candidate) {
+            return if metadata.is_dir() {
+                None
+            } else {
+                Some(candidate.to_path_buf())
+            };
+        }
+        ancestor = candidate.parent();
+    }
+    None
+}
 
 /// Final path component for display. A filesystem root has no such component,
 /// so it keeps its own form (`C:\`, `/`) instead of rendering as an empty

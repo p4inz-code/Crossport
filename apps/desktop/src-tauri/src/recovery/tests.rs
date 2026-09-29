@@ -614,24 +614,34 @@ fn discard_tolerates_an_artifact_that_is_already_gone() {
 
 #[test]
 fn artifact_directories_lists_each_directory_once_deepest_first() {
+    // The paths are built with the platform's own separators rather than typed
+    // out as Windows strings: the helper walks `Path::parent`, and on POSIX a
+    // backslash is an ordinary character, not a separator.
+    let dest = std::env::temp_dir().join("crossport-dest");
+    let artifact_in = |directory: &str, job: u32| PartialArtifact {
+        path: dest
+            .join(directory)
+            .join(format!(".crossport-j-{job}.partial"))
+            .display()
+            .to_string(),
+        bytes: 1,
+    };
     let artifacts = vec![
-        PartialArtifact {
-            path: "C:\\dest\\a\\.crossport-j-0.partial".to_string(),
-            bytes: 1,
-        },
-        PartialArtifact {
-            path: "C:\\dest\\a\\.crossport-j-1.partial".to_string(),
-            bytes: 1,
-        },
-        PartialArtifact {
-            path: "C:\\dest\\b\\.crossport-j-2.partial".to_string(),
-            bytes: 1,
-        },
+        artifact_in("a", 0),
+        artifact_in("a", 1),
+        artifact_in("b", 2),
     ];
 
     let directories = artifact_directories(&artifacts);
 
-    assert_eq!(directories, vec!["C:\\dest\\b", "C:\\dest\\a"]);
+    assert_eq!(
+        directories,
+        vec![
+            dest.join("b").display().to_string(),
+            dest.join("a").display().to_string(),
+        ],
+        "each directory once, listed so the deepest entries go first"
+    );
 }
 
 // -- classification ---------------------------------------------------------

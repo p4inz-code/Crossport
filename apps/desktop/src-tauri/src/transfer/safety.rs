@@ -200,7 +200,15 @@ pub(crate) fn create_chain(path: &Path) -> AppResult<Vec<PathBuf>> {
             Err(error) if error.kind() == io::ErrorKind::NotFound => {
                 missing.push(candidate.to_path_buf());
             }
-            Err(error) => return Err(write_error(error, candidate)),
+            // POSIX reports ENOTDIR for a path whose ancestor is a file where
+            // Windows reports not-found. Answer with the same structured error
+            // either way, naming the entry that is not a directory.
+            Err(error) => match crate::filesystem::blocking_file(candidate) {
+                Some(blocking) => {
+                    return Err(AppError::PathNotDirectory(blocking.display().to_string()))
+                }
+                None => return Err(write_error(error, candidate)),
+            },
         }
         current = candidate.parent();
     }
@@ -338,12 +346,18 @@ mod tests {
                 .code(),
             "invalid_input"
         );
+        // An absolute path that does not exist, built with the platform's own
+        // separators: a Windows-style drive path is not absolute on POSIX, where
+        // it would be rejected as invalid input instead.
+        let missing = unique_temp_dir_label("safety-missing").join("definitely-missing");
         assert_eq!(
-            inspect_source("C:\\crossport-definitely-missing")
+            inspect_source(&missing.display().to_string())
                 .expect_err("missing paths are reported")
                 .code(),
             "path_not_found"
         );
+
+        clean_up(missing.parent().expect("the temp directory has a parent"));
     }
 
     #[test]
