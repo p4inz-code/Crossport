@@ -1,16 +1,19 @@
 # CrossPort
 
-A fast, reliable, cross-platform file transfer utility for Windows, macOS, and Linux.
+A fast, reliable, cross-platform file transfer utility. Shipped for Windows
+today; the application is built to be portable.
 
 Free forever. Offline first. No accounts, no ads, no telemetry.
 
 ## Status
 
-**CrossPort 1.0.0 is released** (tag `v1.0.0`) and the development baseline is
-frozen: only critical security fixes and release-blocking corrections change it
-until the planned maintenance hold ends. Phases 0–7 are complete — the engine,
-the interface, verification, recovery, and history all work end to end, and the
-Windows production build is hardened and released from a committed lockfile. The application builds into Windows
+**CrossPort 1.0.0 is released** (tag `v1.0.0`); that tagged baseline is frozen,
+and only critical fixes change it. Development continues on the **1.1.0** line —
+product and platform polish on top of 1.0.0: a layout that uses the whole
+window, one finalized logo, and documentation of exactly which platforms and
+capabilities are supported. Phases 0–7 are complete: the engine, the interface,
+verification, recovery, and history all work end to end, and the Windows
+production build is hardened and released from a committed lockfile. The application builds into Windows
 installers (NSIS and MSI), starts on a machine with no Node, pnpm, Cargo, or
 repository anywhere in sight, and its performance at the largest datasets the
 backend can produce is measured and bounded by tests. The repository currently
@@ -101,6 +104,21 @@ for the phase plan.
 | `docs/` | Architecture, design, development, and product documentation |
 | `scripts/` | Development and release scripts |
 | `tests/` | Cross-cutting testing notes |
+
+## Platform support
+
+| Platform | Status |
+| --- | --- |
+| **Windows 10 1607+ / Windows 11, 64-bit** | **Supported.** The only packaged and tested target. |
+| Linux | Not built, not tested, not supported — application foundation only. |
+| macOS | Not built, not tested, not supported — application foundation only. |
+
+CrossPort is an application, not a filesystem driver: it moves files across the
+volumes your operating system has already mounted. It does **not** provide
+native NTFS write access on macOS, does not mount, format, or repair volumes,
+and loads no kernel or system extension. The full position is in
+[`docs/product/PLATFORM_SUPPORT.md`](docs/product/PLATFORM_SUPPORT.md) and
+[`docs/product/PARAGON_CAPABILITY_GAP.md`](docs/product/PARAGON_CAPABILITY_GAP.md).
 
 ## Requirements
 

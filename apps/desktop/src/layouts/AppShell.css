@@ -9,6 +9,21 @@
   overflow: hidden;
 }
 
+/* The rail tightens before it gives up its labels: a smaller window keeps the
+   navigation readable rather than reducing it to icons or letting it squeeze
+   the content next to it. */
+@media (max-width: 72rem) {
+  .app-shell {
+    grid-template-columns: 13rem 1fr;
+  }
+}
+
+@media (max-width: 56rem) {
+  .app-shell {
+    grid-template-columns: 11.5rem 1fr;
+  }
+}
+
 .app-shell__frame {
   display: grid;
   grid-template-rows: auto 1fr auto;

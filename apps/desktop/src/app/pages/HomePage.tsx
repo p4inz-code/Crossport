@@ -80,6 +80,7 @@ export function HomePage() {
     <PageContainer
       title={`Welcome to ${appName}`}
       description="A fast, reliable, cross-platform file transfer utility."
+      width="wide"
     >
       <Section
         title="Start here"

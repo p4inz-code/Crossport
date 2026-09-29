@@ -1,5 +1,11 @@
 /* ==========================================================================
  * Drives page styles
+ *
+ * The page is a rail of volumes beside the browser. On a wide window the rail
+ * stays a comfortable reading width while the browser takes everything else,
+ * so the list is never a narrow strip with dead space around it. Below the
+ * two-column breakpoint the rail sits above the browser and both use the full
+ * width.
  * ========================================================================== */
 
 .storage-layout {
@@ -31,8 +37,23 @@
   min-width: 0;
 }
 
+/* Wide windows: a slightly larger rail, and the browser keeps the rest. */
+@media (min-width: 90rem) {
+  .storage-layout {
+    grid-template-columns: minmax(16rem, 21rem) minmax(0, 1fr);
+    gap: var(--space-6);
+  }
+}
+
+/* Medium windows: volumes become a horizontal strip above the browser rather
+   than a column that squeezes it. */
 @media (max-width: 60rem) {
   .storage-layout {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .volume-list__items {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
   }
 }

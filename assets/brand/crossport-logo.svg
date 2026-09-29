@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title desc">
+  <title id="title">CrossPort</title>
+  <desc id="desc">Two arrows crossing in opposite directions, marking files moving both ways between locations.</desc>
+  <!-- CrossPort brand mark.
+       One shape, one meaning: two files crossing in opposite directions.
+       Held on a solid rounded field so it stays legible on light and dark
+       backgrounds and at 16px, where fine detail would disappear. -->
+  <rect x="8" y="8" width="240" height="240" rx="56" fill="#2563eb" />
+  <path
+    d="M72 102 H148 M144 76 L174 102 L144 128 M184 154 H108 M112 128 L82 154 L112 180"
+    fill="none"
+    stroke="#ffffff"
+    stroke-width="22"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>

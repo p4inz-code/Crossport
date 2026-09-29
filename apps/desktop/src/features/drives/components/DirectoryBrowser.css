@@ -2,10 +2,13 @@
  * DirectoryBrowser component styles
  * ========================================================================== */
 
+/* The browser is the working surface of the Drives page, so it grows with the
+   window: never shorter than a usable list, never taller than the frame can
+   comfortably show, and always the same box at every size. */
 .browser {
   display: flex;
   flex-direction: column;
-  min-height: 26rem;
+  min-height: clamp(26rem, 58vh, 52rem);
   min-width: 0;
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);

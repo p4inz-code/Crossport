@@ -55,6 +55,7 @@ export function RecoveryPage() {
     <PageContainer
       title="Recovery"
       description="Transfers that were still running when the application stopped. Nothing is changed until you choose an action."
+      width="wide"
       className="recovery-page"
       actions={
         <Button

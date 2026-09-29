@@ -1,14 +1,33 @@
 /* ==========================================================================
  * PageContainer component styles
+ *
+ * Width is a per-page decision, not a global one. Three measures:
+ *   --default   a readable column for prose, forms, and short lists
+ *   --wide      a working surface that uses more of a large window
+ *   --fluid     the whole frame, for the directory browser
+ * Padding tightens on small windows so a 1024-wide frame keeps its content,
+ * and grows on very wide screens so nothing sits against an edge.
  * ========================================================================== */
 
 .page-container {
-  max-width: 56rem;
+  width: 100%;
   margin: 0 auto;
-  padding: var(--space-8) var(--space-6) var(--space-10);
+  padding: var(--space-6) var(--space-6) var(--space-10);
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
+}
+
+.page-container--default {
+  max-width: 60rem;
+}
+
+.page-container--wide {
+  max-width: 82rem;
+}
+
+.page-container--fluid {
+  max-width: none;
 }
 
 .page-container__header {
@@ -29,7 +48,7 @@
   margin-top: var(--space-1-5);
   font-size: var(--text-base);
   color: var(--color-text-muted);
-  max-width: 40rem;
+  max-width: 52rem;
 }
 
 .page-container__actions {
@@ -43,4 +62,26 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
+  min-width: 0;
+}
+
+/* Small windows: keep the content, drop the air. */
+@media (max-width: 48rem) {
+  .page-container {
+    padding: var(--space-4) var(--space-4) var(--space-8);
+    gap: var(--space-4);
+  }
+}
+
+/* Very wide windows: a little more breathing room at the edges, and a wider
+   readable measure so the page does not read as a narrow strip. */
+@media (min-width: 100rem) {
+  .page-container--default {
+    max-width: 66rem;
+  }
+
+  .page-container--fluid,
+  .page-container--wide {
+    padding-inline: var(--space-8);
+  }
 }

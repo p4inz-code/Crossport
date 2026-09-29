@@ -201,6 +201,7 @@ export function DrivesPage() {
     <PageContainer
       title="Drives"
       description="Volumes reported by the CrossPort backend, and the folders inside them."
+      width="fluid"
       actions={
         <Button
           variant="secondary"

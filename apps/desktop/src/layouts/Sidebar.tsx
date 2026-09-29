@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
+import { BrandMark } from "@/components/ui";
 import { APP_ROUTES, cn } from "@/lib";
 import { useAppStore, useRecoveryStore } from "@/stores";
 import "./Sidebar.css";
@@ -44,7 +45,7 @@ export function Sidebar() {
     <aside className="sidebar">
       <div className="sidebar__brand">
         <span className="sidebar__logo" aria-hidden="true">
-          <HardDrive size={20} strokeWidth={1.75} />
+          <BrandMark size={18} />
         </span>
         <span className="sidebar__brand-name">{appName}</span>
       </div>

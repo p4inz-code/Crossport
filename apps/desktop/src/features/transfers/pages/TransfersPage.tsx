@@ -42,6 +42,7 @@ export function TransfersPage() {
     <PageContainer
       title="Transfers"
       description="Jobs the transfer engine is running or has finished, in the order they were queued."
+      width="wide"
       className="transfers-page"
       actions={
         <>

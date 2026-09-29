@@ -1,5 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-labelledby="title">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="32" height="32" role="img" aria-labelledby="title">
   <title id="title">CrossPort</title>
-  <rect width="32" height="32" rx="7" fill="#2563eb" />
-  <path d="M9 16h14M9 16l4-4M9 16l4 4M23 12v8" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+  <rect x="8" y="8" width="240" height="240" rx="56" fill="#2563eb" />
+  <path
+    d="M72 102 H148 M144 76 L174 102 L144 128 M184 154 H108 M112 128 L82 154 L112 180"
+    fill="none"
+    stroke="#ffffff"
+    stroke-width="22"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
 </svg>

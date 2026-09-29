@@ -228,6 +228,30 @@ critical production bugs, and release-blocking corrections may change the frozen
 `1.0.x` line during the maintenance hold. No new features and no V2 work enter
 it. See `VERSIONING.md`.
 
+## Release 1.1 — product and platform polish (in progress)
+
+Work on the next line. It changes no engine, persistence, or security
+behaviour; it makes the finished product look and read like one, and states its
+platform position honestly.
+
+- [x] Responsive page widths: the directory browser fills the window, working
+      surfaces use a wide measure, and prose and forms keep a readable one; the
+      navigation rail tightens before it drops labels
+- [x] The Drives layout gives the browser the rest of a wide window, grows the
+      browser with the window height, and turns the volume rail into a strip
+      above it on medium windows
+- [x] One finalized logo (`assets/brand/crossport-logo.svg`), the sidebar brand
+      tile and favicon using the same mark, and the packaged application and
+      installer icons regenerated from it
+- [x] `docs/product/PLATFORM_SUPPORT.md` and
+      `docs/product/PARAGON_CAPABILITY_GAP.md`: the supported platform, the
+      architecture's cross-platform status, and the driver-class capabilities
+      CrossPort intentionally does not attempt
+- [ ] Linux and macOS bundles, and platform QA for their surfaces — explicitly
+      not started; see `docs/product/PLATFORM_SUPPORT.md`
+
+The 1.0.0 tag and its artifacts are untouched by this work.
+
 ## Version 2 candidates
 
 Not started. Candidates from `docs/product/FEATURE_SPECIFICATION.md`: folder

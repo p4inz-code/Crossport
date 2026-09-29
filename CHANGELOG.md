@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-09-29
+
+Product and platform polish on top of the released 1.0.0 baseline. The tagged
+`v1.0.0` artifact is unchanged; this is the next development line.
+
+### Added
+
+- A responsive page-width system (`PageContainer` gains a `width` variant): the
+  directory browser fills the whole window, working surfaces use a wide measure,
+  and prose and forms keep a readable one. Views are no longer a fixed column in
+  the middle of a large window, and the app shell tightens its navigation rail
+  before it drops labels.
+- A finalized CrossPort logo: one mark (two arrows crossing in opposite
+  directions on a solid rounded field), one source of truth
+  (`assets/brand/crossport-logo.svg`), and the packaged application/installer
+  icons regenerated from it. The sidebar brand tile and the webview favicon use
+  the same mark.
+- `docs/product/PLATFORM_SUPPORT.md`: the current production platform, the
+  cross-platform status of the architecture, and exactly what a Linux or macOS
+  release would still require.
+- `docs/product/PARAGON_CAPABILITY_GAP.md`: an honest capability matrix against
+  filesystem-driver products — what CrossPort supports, what is
+  platform-specific, and what would need a signed driver and is therefore out of
+  scope (including native NTFS write access on macOS).
+
+### Changed
+
+- The Drives page hands the browser the rest of a wide window instead of
+  leaving it a narrow panel, and the browser grows with the window height. On
+  medium windows the volume rail becomes a horizontal strip above the browser
+  rather than a column that squeezes it.
+- README states the platform position directly: Windows is the only packaged
+  and tested target; Linux and macOS are application foundation only.
+- `docs/product/BRAND_GUIDELINES.md` documents the finalized logo and how to
+  regenerate the platform icons from it.
+
+### Fixed
+
+- Nothing user-affecting; no engine, persistence, or security behaviour changed
+  in this release.
+
 ## [1.0.0] - 2026-09-29
 
 First production release. Windows only; feature complete, security hardened,

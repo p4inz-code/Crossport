@@ -55,6 +55,7 @@ export function HistoryPage() {
     <PageContainer
       title="History"
       description="Finished transfers, kept by the backend. Filters run over the durable list."
+      width="wide"
       className="history-page"
       actions={
         <>
