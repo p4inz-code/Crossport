@@ -1,111 +1,60 @@
 # CrossPort
 
-A fast, reliable, cross-platform file transfer utility. Shipped for Windows
-today; the application is built to be portable.
+**A professional file-transfer utility for moving and verifying files across
+mounted volumes.**
 
-Free forever. Offline first. No accounts, no ads, no telemetry.
+CrossPort copies and moves files and folders between the drives your operating
+system has already mounted, shows you exactly what a transfer will do before it
+starts, and proves what landed when it finishes. It runs offline: no account, no
+telemetry, no background synchronization.
 
-## Status
+**Windows 10 1607+ / Windows 11, 64-bit** is the only packaged and tested
+platform today. Linux and macOS are application foundation only.
 
-**CrossPort 1.0.0 is released** (tag `v1.0.0`); that tagged baseline is frozen,
-and only critical fixes change it. Development continues on the **1.1.0** line —
-product and platform polish on top of 1.0.0: a layout that uses the whole
-window, one finalized logo, and documentation of exactly which platforms and
-capabilities are supported. Phases 0–7 are complete: the engine, the interface,
-verification, recovery, and history all work end to end, and the Windows
-production build is hardened and released from a committed lockfile. The application builds into Windows
-installers (NSIS and MSI), starts on a machine with no Node, pnpm, Cargo, or
-repository anywhere in sight, and its performance at the largest datasets the
-backend can produce is measured and bounded by tests. The repository currently
-provides:
+![CrossPort Drives view: a volume rail with real Windows volumes beside a directory listing of a folder, with two files selected](docs/assets/screenshots/hero-drives.png)
 
-- A Tauri 2 desktop shell (React 19 + TypeScript + Vite frontend, Rust backend)
-- A design-token-driven UI system with light/dark/system themes
-- A typed IPC layer with structured `{ code, message }` errors end to end
-- Backend-owned, validated, persisted settings
-- Volume detection with real metadata: kind (fixed, removable, network, optical,
-  RAM disk, or unknown), volume name, filesystem type, total/free/used capacity,
-  read-only flag, and mounted status. Windows volumes are probed through the
-  Win32 volume APIs; anything a platform cannot report stays unknown
-- A storage browser: pick a volume, open its folders, walk a breadcrumb trail,
-  go back, forward, and up (buttons or `Alt`+arrow keys), refresh, and see every
-  entry with its size, modification time, and kind
-- Safe navigation: every path is validated in Rust before it is read, listings
-  never recurse, and symlinks/reparse points are reported but never followed
-- A filesystem foundation (path normalization, directory validation, metadata,
-  single-directory listing)
-- A platform abstraction (OS identity, app directories, volumes)
-- A native folder picker hosted in Rust
-- A transfer engine: copy and move files and folders recursively, with a queue
-  that runs jobs in order, live byte/speed/ETA progress, pause, resume, cancel
-  with partial-output cleanup, and three conflict strategies (Replace, Skip,
-  Rename)
-- Transfer safety: destination and source validation in Rust, refusal to
-  transfer into itself, free-space checks, symlinks and reparse points reported
-  but never followed or deleted, and moves that keep the source when anything
-  failed
-- A transfer surface: multi-select in the browser, a composer that shows the
-  backend's dry run — source mapping, counts, free space, conflict behaviour,
-  verification policy, and warnings — before anything is queued, and a queue
-  page with per-job progress, issues, controls, the verification verdict, and a
-  link to the finished job's durable record
-- Post-transfer verification with three policies (`size` by default, SHA-256
-  `checksum`, or `none`): the checksum compares the digest of the bytes read from
-  the source against the file on disk, a mismatch fails its item while keeping
-  the file it wrote, and every verdict states what was checked and what was not
-- Durable state and history: versioned, atomically written documents that
-  survive a crash, with damaged files preserved beside the original rather than
-discarded
-- Crash recovery: interrupted transfers are classified into explicit outcomes
-  and left for the user to restart, discard, or confirm. Nothing is restarted
-automatically, and byte-offset resume of a partial file is deliberately refused
-- Transfer history with per-record verdicts, filters, retention by count, and a
-  details view
-- Notifications for finished, failed, verification-failed, skipped, and
-  interrupted transfers, each able to open the surface it is about
-- Desktop behaviour that respects the work in flight: closing the window while a
-  transfer runs is held by Rust and answered in the interface, and `Ctrl`/`Cmd`+
-  `1`…`6` move between pages without a mouse
-- A Windows installer (NSIS) and a WiX MSI, built from `scripts/release.sh`
-  into `apps/desktop/src-tauri/target/release/bundle/` with SHA-256 checksums,
-  and a shipped executable named `CrossPort.exe` after the product rather than
-  after the crate
-- Windows-safe production logging (stdout + rotating per-app log file) that
-  records startup context, app directories, and job identifiers — never the
-  contents of the user's files, and never the paths of the files a transfer
-  moves
-- A user-visible failure surface: a startup failure or a panic shows a message
-  box (with a matching log entry) instead of a window that never appears
-- Measured performance: startup, directory listings, deep trees, many small
-  files, a large streamed file, idle CPU, and the largest listing/history/queue
-  the interface can render, with budgets enforced by tests (see
-  `docs/development/PERFORMANCE.md`)
-- A restrictive CSP and a minimal Tauri capability set
-- Real test suites (Vitest + `cargo test`), a release-artifact smoke test, and
-  CI on Linux and Windows
+---
 
-`docs/release/RELEASE_1.0.md` is the production release document: version,
-supported platform, installation, functionality, verification, recovery, the
-security model, artifacts, and the explicit list of what is not supported.
+## Core capabilities
 
-Not implemented yet: folder synchronization, scheduling, and the other Version 2+
-candidates in
-[`docs/product/FEATURE_SPECIFICATION.md`](docs/product/FEATURE_SPECIFICATION.md) —
-they are deliberately absent rather than stubbed. See [`ROADMAP.md`](ROADMAP.md)
-for the phase plan.
+- Browse mounted volumes and the folders inside them, with real metadata
+  (kind, filesystem, capacity, read-only state, mounted state).
+- Select files and folders, then **copy** or **move** them recursively.
+- Resolve name conflicts with **Replace**, **Skip**, or **Rename**.
+- Review a backend **dry run** before anything is queued — where each source
+  lands, item and byte counts, free space, conflict behaviour, and warnings.
+- **Verify** what was written: size by default, optional SHA-256 while
+  copying, or none.
+- Watch live byte, speed, and ETA progress; **pause**, **resume**, or
+  **cancel** with partial-output cleanup.
+- Keep a **history** of finished transfers with per-record verdicts.
+- **Recover** interrupted transfers with an explicit decision — restart,
+  discard, or confirm. Nothing restarts automatically.
+- Report read-only and unavailable volumes honestly instead of failing silently.
 
-## Repository layout
+The full public matrix — what is current, what is deliberately not, and what is
+future — is in [`docs/product/CAPABILITY_MATRIX.md`](docs/product/CAPABILITY_MATRIX.md).
 
-| Path | Purpose |
-| --- | --- |
-| `apps/desktop/` | The single Tauri desktop application |
-| `apps/desktop/src/` | React frontend (features, stores, services, UI primitives) |
-| `apps/desktop/src-tauri/` | Rust backend (commands, platform, filesystem, settings, errors) |
-| `docs/` | Architecture, design, development, and product documentation |
-| `scripts/` | Development and release scripts |
-| `tests/` | Cross-cutting testing notes |
+## Why CrossPort exists
 
-## Platform support
+Moving files between two drives is routine, and doing it safely is harder than
+it looks. Routine tools copy without telling you where each item will land or
+whether the bytes arrived intact, and a cancelled or crashed transfer can leave
+a half-written file that looks finished.
+
+CrossPort is built around three ideas:
+
+- **Review before it moves.** A transfer is planned first, and the plan is
+  shown before anything is written.
+- **Prove what landed.** Verification is part of the job, and every verdict
+  states what was checked and what was not.
+- **Never guess about interrupted work.** An interrupted transfer is
+  classified and handed to you; it is never silently resumed or reported as
+  complete.
+
+It is free, offline, and cross-platform by design. Windows is what ships today.
+
+## Supported platform
 
 | Platform | Status |
 | --- | --- |
@@ -113,175 +62,207 @@ for the phase plan.
 | Linux | Not built, not tested, not supported — application foundation only. |
 | macOS | Not built, not tested, not supported — application foundation only. |
 
-CrossPort is an application, not a filesystem driver: it moves files across the
-volumes your operating system has already mounted. It does **not** provide
-native NTFS write access on macOS, does not mount, format, or repair volumes,
-and loads no kernel or system extension. The full position is in
+Requirements:
+
+- Microsoft Edge WebView2 runtime. Windows 11 and current Windows 10 include
+  it; the installer bootstraps it silently when it is missing.
+- Paths longer than 260 characters need Windows long-path support enabled.
+  Without it, Windows refuses them and CrossPort reports the failure.
+
+CrossPort is an **application, not a filesystem driver**. It moves files across
+volumes your OS has already mounted. It does **not** mount, format, or repair
+volumes, does not add native NTFS write access on macOS, and loads no kernel or
+system extension. See
 [`docs/product/PLATFORM_SUPPORT.md`](docs/product/PLATFORM_SUPPORT.md) and
 [`docs/product/PARAGON_CAPABILITY_GAP.md`](docs/product/PARAGON_CAPABILITY_GAP.md).
 
-## Requirements
+## Download / Installation
 
-### To run CrossPort
+The Windows installers are attached to the GitHub Release for the current
+version:
 
-- Windows 10 1607+ or Windows 11, 64-bit
-- Microsoft Edge WebView2 runtime. Windows 11 and current Windows 10 include
-  it; the installer downloads and installs it silently when it is missing
-- Paths longer than 260 characters work when Windows has long paths enabled
-  (`LongPathsEnabled`); without it, Windows itself refuses them and CrossPort
-  reports the failure. Transfers below that limit are unaffected
+- **[GitHub Releases](../../releases/latest)** — `CrossPort_<version>_x64-setup.exe`
+  (NSIS, per-user) and `CrossPort_<version>_x64_en-US.msi` (WiX MSI), each with
+  a SHA-256 digest in `checksums.txt`.
 
-### To build CrossPort
+To install:
 
-- Node.js >= 22 and pnpm 10
-- Rust (stable) with Cargo
-- Platform prerequisites for [Tauri 2](https://v2.tauri.app/start/prerequisites/)
+1. Download `CrossPort_<version>_x64-setup.exe` (recommended) or the `.msi`.
+2. Run it. The NSIS installer installs for the current user into
+   `%LOCALAPPDATA%\CrossPort`, adds a Start-menu entry and a desktop shortcut.
+   No account and no setup step are involved.
+3. Start CrossPort from the Start menu.
 
-## Getting started
+To remove it, use **Apps → Installed apps → CrossPort → Uninstall**.
+Uninstalling removes the program, shortcuts, and registry entry. Your settings,
+history, and logs live under `%APPDATA%\com.crossport.app` and
+`%LOCALAPPDATA%\com.crossport.app`; CrossPort never deletes those for you.
 
-```bash
-pnpm install            # install workspace dependencies
-pnpm dev                # frontend dev server (http://localhost:5173)
-```
-
-To run inside the Tauri shell (required for drive enumeration, the native
-folder picker, and backend-persisted settings):
+The installers are **not code-signed**, so Windows shows an unknown-publisher
+warning on first install. Verify a download with:
 
 ```bash
-pnpm --filter desktop exec tauri dev
+sha256sum -c checksums.txt
 ```
 
-## Installing
+## Quick usage flow
 
-The release artifacts are produced locally (see [Building a release](#building-a-release));
-there is no published download and no auto-updater.
+1. **Open a volume** on the Drives page — the left rail lists the volumes the
+   backend detected, with their filesystem and free space.
+2. **Walk into folders** with the breadcrumb, by double-clicking, or with
+   `Alt`+arrow keys.
+3. **Tick the rows** you want to transfer. The selection is the source.
+4. Choose **Copy to…** or **Move to…** and pick a destination. The composer
+   shows the backend's plan — items, bytes, free space, conflict behaviour,
+   verification policy, and warnings.
+5. **Start** the transfer and follow it on the Transfers page: live progress,
+   pause/resume/cancel, and the verification verdict.
+6. Find finished jobs in **History**, and anything interrupted in **Recovery**.
 
-1. Run `CrossPort_<version>_x64-setup.exe` (NSIS, installs for the current user
-   into `%LOCALAPPDATA%\CrossPort`) or `CrossPort_<version>_x64_en-US.msi`
-   (WiX). The NSIS installer also adds a Start-menu entry and a desktop
-   shortcut.
-2. Start CrossPort from the Start menu. The window opens with no setup step and
-   no account.
-3. To remove it, use **Apps → Installed apps → CrossPort → Uninstall** the same
-   way as any other Windows application.
+`Ctrl`/`Cmd`+`1`…`6` move between pages.
 
-Uninstalling removes the program and its shortcuts. Settings, transfer history,
-interrupted-transfer state, and logs live under `%APPDATA%\com.crossport.app`
-and `%LOCALAPPDATA%\com.crossport.app`; remove those folders by hand if you want
-them gone as well. CrossPort never deletes them for you.
+## Safety and verification model
 
-## Verification
+- **Plan before write.** `plan_transfer` is read-only: it reports what would
+  happen and touches nothing.
+- **Validated paths in Rust.** Paths are normalized and validated before use;
+  symlinks and reparse points are reported but never followed, copied, or
+  removed.
+- **Refusals that matter.** A transfer into itself, a destination inside its
+  source, and a destination without enough free space are refused before work
+  starts.
+- **Verification is explicit.** `size` (default) compares the written length
+  against the plan; `checksum` compares a SHA-256 digest of the bytes read from
+  the source against the file on disk; `none` verifies nothing and says so.
+- **Honest verdicts.** Every result states what was checked and what was not.
+  Modified times, attributes, ownership, and alternate data streams are **not**
+  reapplied.
+- **A failed check fails the job.** A mismatch fails its item while keeping the
+  file it wrote, so you can inspect it.
+- **Moves keep the source** when anything failed.
+- **Recovery is never automatic.** Interrupted work is classified into explicit
+  outcomes and left for you to restart, discard, or confirm.
 
-Every change must keep the full suite green:
+The security model (restrictive CSP, a minimal Tauri capability surface, and
+logging that records job identifiers but never file contents) is documented in
+[`SECURITY.md`](SECURITY.md) and
+[`docs/architecture/SYSTEM_ARCHITECTURE.md`](docs/architecture/SYSTEM_ARCHITECTURE.md).
 
-```bash
-pnpm lint               # ESLint
-pnpm check              # Biome
-pnpm --filter desktop build   # typecheck + production build
-pnpm test               # Vitest (frontend, includes the performance budgets)
-cd apps/desktop/src-tauri
-cargo fmt --check       # Rust formatting
-cargo check --all-targets
-cargo clippy --all-targets
-cargo test              # Rust tests, real files included
-bash scripts/check-versions.sh   # version sync across manifests
-```
+## Current limitations
 
-`scripts/lint.sh`, `scripts/test.sh`, and the [CI workflow](.github/workflows/ci.yml)
-orchestrate the same commands on Linux, and the workflow also runs the Rust
-suite on Windows so the Windows-only behaviour is exercised where it ships.
+- **Windows only.** No macOS or Linux artifact is built or tested.
+- **Not code-signed**, so Windows shows an unknown-publisher warning.
+- **A downgrade is not refused.** The interactive installer reports that a
+  newer version is installed and replaces it only after uninstalling it, and a
+  silent install (`/S`) replaces it outright. Install only a build you mean to
+  run. There is no auto-updater.
+- **One transfer runs at a time**, by design. A second job waits in the queue.
+- **History is bounded** (200 records by default; 2,000 at most) and pruned on
+  write, so it is a record of recent work, not an audit log.
+- **Verification proves only the claims it lists.** Metadata is not reapplied.
+- **No byte-offset resume.** An interrupted transfer is restarted or discarded
+  whole, and CrossPort says so before either.
+- **Source/destination containment is decided lexically**, not by resolving the
+  filesystem. Two spellings of the same location (an 8.3 short name, or a path
+  through a junction) are not recognized as the same directory.
+- **Long paths** need Windows long-path support enabled.
 
-Two further checks are run when preparing a release:
+## Future roadmap
 
-```bash
-cargo test --test artifact_smoke -- --nocapture        # starts the built app
-cargo test --lib measure -- --ignored --nocapture --test-threads=1   # performance numbers
-bash scripts/release.sh                               # installers + checksums
-```
+Directions, not commitments — no dates. The short version:
 
-## Building a release
+- **Now:** the Windows 1.1 line (see [`ROADMAP.md`](ROADMAP.md)).
+- **Next:** realistic engineering work on the Windows product — broader
+  verification coverage, queue ergonomics, and packaging polish.
+- **FUTURE / platform-specific:** Linux and macOS builds and their QA, code
+  signing, and an update path. These require platform builds and signing
+  infrastructure that do not exist yet.
 
-```bash
-bash scripts/release.sh
-```
+Filesystem-driver capabilities (mounting, formatting, repairing, or adding
+native NTFS write access) are **out of scope** and are not planned. See
+[`NON_GOALS.md`](NON_GOALS.md) and
+[`docs/product/PARAGON_CAPABILITY_GAP.md`](docs/product/PARAGON_CAPABILITY_GAP.md).
 
-This checks that every manifest agrees on the version, builds the frontend,
-builds the application with the committed lockfile (`cargo build --locked`),
-produces the NSIS installer and the MSI, and writes
-`apps/desktop/src-tauri/target/release/bundle/checksums.txt` with a SHA-256
-digest for every artifact. Nothing is uploaded anywhere.
+## Technical stack and architecture
 
-Artifacts are not code-signed: Windows SmartScreen will warn about an unknown
-publisher until a signing certificate and `bundle > windows > certificateThumbprint`
-are configured. `docs/development/RELEASE_PROCESS.md` has the details, including
-how to verify a digest and what the installers do to user data.
+| Layer | What it is |
+| --- | --- |
+| Shell | Tauri 2 desktop application |
+| Frontend | React 19 + TypeScript + Vite, design-token UI system, Zustand stores |
+| Backend | Rust: the transfer engine, verification, persistence, recovery, history, and every filesystem decision |
+| Boundary | One typed IPC layer with structured `{ code, message }` errors; the webview is granted only Tauri core defaults |
 
-## Running CrossPort
-
-Open a volume on the left, walk into folders with the breadcrumb trail or by
-double-clicking, tick the rows you want to transfer, and choose **Copy to…** or
-**Move to…**. The composer shows what the backend planned — sources, counts,
-free space, conflict behaviour, verification policy, and warnings — before
-anything is queued. The queue page owns the job from there: live byte, speed,
-and ETA progress; pause, resume, cancel; the verification verdict and what was
-not preserved; and a link to the finished job's record in History. If a job is
-interrupted (a crash, a close while it was running, a volume pulled out),
-Recovery lists it with what a restart would do, and nothing is restarted on its
-own. `Ctrl`/`Cmd`+`1`…`6` move between pages.
-
-## Known limitations
-
-- Windows is the only packaged target so far. The shell is cross-platform by
-  construction, but no macOS or Linux artifact is built or tested here.
-- Artifacts are not code-signed, so Windows shows an unknown-publisher warning
-  on first install.
-- There is no update checker: a new build is installed the same way as the
-  first one. A downgrade is **not** blocked — the interactive installer reports
-  that a newer version is installed and replaces it only after uninstalling it,
-  and a silent install (`/S`) replaces it outright — so install only a build
-  you mean to run.
-- One transfer runs at a time, by design. A second job waits in the queue.
-- History is bounded (200 records by default, 2,000 at most) and pruned on
-  write, so it is a record of recent work rather than an audit log.
-- Verification proves only the claims it lists: `size` by default, SHA-256 when
-  chosen, and `none` when asked for. Modification times, attributes, ownership,
-  and alternate data streams are not reapplied to what is written.
-- An interrupted transfer is never resumed at a byte offset: it is restarted or
-discarded whole, and CrossPort says so before doing either.
-- Paths longer than 260 characters need Windows long-path support enabled; the
-  engine creates a directory 3,475 characters deep and copies a tree that deep
-  on such a machine, and reports the Windows error verbatim on one where the
-  limit still applies.
-- Source/destination containment is decided lexically, not by resolving the
-  filesystem: two spellings of the same location (an 8.3 short name, or a path
-  through a pre-existing junction or reparse point) are not recognized as the
-  same directory, and a destination path that traverses an existing junction is
-  resolved by the operating system, so files land wherever that junction
-  points. CrossPort never creates, plans through, copies, or removes reparse
-  points itself.
-- The installers were exercised against both shipped versions: a fresh 1.1.0
-  install, a same-version reinstall, an upgrade from 1.0.0 to 1.1.0, and an
-  uninstall, with the user's data preserved throughout. A downgrade is
-  permitted rather than refused (see above), and there is no code-signed
-  upgrade path.
-
-## Architecture in one paragraph
-
-The frontend is feature-folder based with shared stores (Zustand), services
-that own all IPC (`src/services/`), and token-driven UI primitives. Every
+The frontend is feature-folder based and never touches a path itself. Every
 backend call goes through one transport module that validates payloads and
-normalizes failures into `IpcError` with a stable code. The Rust backend owns
-user settings, persists them to the platform app-config directory, and exposes
-commands for settings, platform facts, volume detection, directory listing,
-path inspection, the native folder picker, transfers, history, and recovery.
-Transfer documents (state, history) go through one atomic, versioned document
-layer, and the archive is the only module that knows both the live engine and
-the durable side. Filesystem and platform work stays in Rust, so the webview is
-granted only Tauri core defaults.
+normalizes failures. Transfer documents (state and history) go through one
+atomic, versioned layer that survives a crash. See
+[`docs/architecture/SYSTEM_ARCHITECTURE.md`](docs/architecture/SYSTEM_ARCHITECTURE.md)
+for the full picture.
 
-See [`docs/architecture/SYSTEM_ARCHITECTURE.md`](docs/architecture/SYSTEM_ARCHITECTURE.md)
-for details.
+## Development and verification
+
+Built with Node.js ≥ 22, pnpm 10, and a stable Rust toolchain. See
+[`docs/development/SETUP.md`](docs/development/SETUP.md) and
+[`CONTRIBUTING.md`](CONTRIBUTING.md).
+
+The suite that guards every change:
+
+```bash
+pnpm check                     # Biome
+pnpm lint                      # ESLint
+pnpm --filter desktop build    # typecheck + production build
+pnpm test                      # Vitest (includes the performance budgets)
+
+cd apps/desktop/src-tauri
+cargo fmt --check
+cargo check --all-targets
+cargo clippy --all-targets -- -D warnings
+cargo test                     # includes real-file transfer and recovery tests
+
+bash scripts/check-versions.sh # version sync across all four manifests
+```
+
+CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs those checks
+on Linux and runs the Rust suite on Windows, where the shipping behaviour
+actually lives. Performance is measured on real Windows workloads and bounded
+by tests — see [`docs/development/PERFORMANCE.md`](docs/development/PERFORMANCE.md).
+
+Release artifacts are built locally on Windows with `bash scripts/release.sh`,
+which produces the NSIS installer, the MSI, and `checksums.txt`. See
+[`docs/development/RELEASE_PROCESS.md`](docs/development/RELEASE_PROCESS.md).
+
+## Support
+
+CrossPort is free and offline: no account, no telemetry, no ads. If it has been
+useful to you, you can support its development.
+
+**UPI (India):** `9321614988@jio`
+
+<a href="https://p4inz-code.github.io/donate/"><img src="https://raw.githubusercontent.com/p4inz-code/donate/main/qr.svg" alt="UPI QR code. Scan it with any UPI app." width="160"></a>
+
+[Open the donation page](https://p4inz-code.github.io/donate/). Outside India,
+or prefer a card?
+
+<a href="https://buymeacoffee.com/p4inz"><img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-p4inz-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy me a coffee"></a>
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [`LICENSE`](LICENSE). Copyright © 2026 CrossPort Contributors.
+Third-party dependency licenses are summarized in
+[`docs/legal/THIRD_PARTY_LICENSES.md`](docs/legal/THIRD_PARTY_LICENSES.md).
+
+## Documentation
+
+| Document | What it covers |
+| --- | --- |
+| [`docs/product/CAPABILITY_MATRIX.md`](docs/product/CAPABILITY_MATRIX.md) | Current vs. not-current vs. future capabilities |
+| [`docs/product/PLATFORM_SUPPORT.md`](docs/product/PLATFORM_SUPPORT.md) | Platform support, precisely |
+| [`docs/product/PARAGON_CAPABILITY_GAP.md`](docs/product/PARAGON_CAPABILITY_GAP.md) | Why CrossPort is not a filesystem driver |
+| [`docs/release/RELEASE_1.1.1.md`](docs/release/RELEASE_1.1.1.md) | The current release: what changed and what was verified |
+| [`ROADMAP.md`](ROADMAP.md) | Engineering phases and future direction |
+| [`CHANGELOG.md`](CHANGELOG.md) | Version history |
+| [`docs/architecture/`](docs/architecture) | Transfer engine, verification, persistence, recovery, security |
+| [`docs/reference/FAQ.md`](docs/reference/FAQ.md) | Common questions |
+| [`docs/reference/GLOSSARY.md`](docs/reference/GLOSSARY.md) | Terminology |
+| [`SUPPORT.md`](SUPPORT.md) | Getting help |
+| [`SECURITY.md`](SECURITY.md) | Reporting a vulnerability |
