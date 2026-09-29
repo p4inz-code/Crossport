@@ -83,9 +83,13 @@ sha256sum -c checksums.txt
   logs, and WebView2 profile a previous install created. Both installers can be
   run over an existing installation of the same version: the program files are
   replaced and the user's data is kept.
-- Installing an older version over a newer one is refused
-  (`bundle > windows > allowDowngrades` is `false`), so a downgrade cannot
-  quietly present an older build with a newer history document.
+- Installing an older version over a newer one is **not** blocked.
+  `bundle > windows > allowDowngrades` is `false`, but the NSIS template that
+  reads it only enforces it on the interactive reinstall page, where a
+  downgrade requires uninstalling the newer version first; a silent install
+  (`/S`) skips that page and replaces the newer build outright. A downgraded
+  build does not corrupt user data — a newer history document is refused and
+  left untouched rather than read — but only install a build you mean to run.
 - Uninstalling removes the program files, the shortcuts, and the uninstall
   entry. It leaves the user data directories in place; deleting them is the
   user's decision.
@@ -100,10 +104,11 @@ shortcut, and — after the uninstall — that
 `%APPDATA%\com.crossport.app` and `%LOCALAPPDATA%\com.crossport.app` are still
 there.
 
-Not exercised, and why: a real **version upgrade** and a **refused downgrade**
-both need a second version to exist, and the repository has one. The MSI was
-built and its per-machine scope is recorded above, but installing it was not
-attempted here because it requires elevation.
+Exercised since against the two shipped versions: an **upgrade** from 1.0.0 to
+1.1.0 (the program files are replaced while the registry entry, shortcuts, and
+user data are kept) and a **downgrade**, which is not refused (see above). The
+MSI was built and its per-machine scope is recorded above, but installing it
+requires elevation, which was not available here.
 
 ### WebView2
 

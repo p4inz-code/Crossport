@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Corrected the documentation's downgrade claim. The installers do **not**
+  refuse an older version over a newer one: the interactive NSIS installer
+  reports the newer version and replaces it only after uninstalling it, and a
+  silent install replaces it outright. A downgraded build refuses a newer
+  history document rather than corrupting it. `README.md`, `ROADMAP.md`, and
+  the release documents now describe this behaviour instead of promising a
+  refusal.
+
 ## [1.1.0] - 2026-09-29
 
 Product and platform polish on top of the released 1.0.0 baseline. The tagged

@@ -236,7 +236,10 @@ own. `Ctrl`/`Cmd`+`1`…`6` move between pages.
 - Artifacts are not code-signed, so Windows shows an unknown-publisher warning
   on first install.
 - There is no update checker: a new build is installed the same way as the
-  first one. Installing an older version over a newer one is refused.
+  first one. A downgrade is **not** blocked — the interactive installer reports
+  that a newer version is installed and replaces it only after uninstalling it,
+  and a silent install (`/S`) replaces it outright — so install only a build
+  you mean to run.
 - One transfer runs at a time, by design. A second job waits in the queue.
 - History is bounded (200 records by default, 2,000 at most) and pruned on
   write, so it is a record of recent work rather than an audit log.
@@ -256,10 +259,11 @@ discarded whole, and CrossPort says so before doing either.
   resolved by the operating system, so files land wherever that junction
   points. CrossPort never creates, plans through, copies, or removes reparse
   points itself.
-- The installers are exercised as far as one version allows: a fresh install, a
-  same-version reinstall, and an uninstall were all run against the built
-  artifact, but a real version upgrade and a refused downgrade need a second
-  version to exist and have not been.
+- The installers were exercised against both shipped versions: a fresh 1.1.0
+  install, a same-version reinstall, an upgrade from 1.0.0 to 1.1.0, and an
+  uninstall, with the user's data preserved throughout. A downgrade is
+  permitted rather than refused (see above), and there is no code-signed
+  upgrade path.
 
 ## Architecture in one paragraph
 

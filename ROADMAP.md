@@ -146,8 +146,9 @@ surface, not a log.
       restart after a recovery decision
 - [x] Production build hardened: publisher, copyright, descriptions, license,
       category, current-user NSIS with a language and Start-menu folder, WiX
-      MSI, WebView2 bootstrapper, downgrades refused, and unused plugin
-      commands stripped from the binary; the shipped executable is
+      MSI, WebView2 bootstrapper, downgrades disabled
+      (`allowDowngrades: false`), and unused plugin commands stripped from the
+      binary; the shipped executable is
       `CrossPort.exe` rather than cargo's `crossport.exe`; release profile
       pinned with thin LTO and no debug info (rustc 1.97.1 crashes inside a
       fat-LTO link of this crate on Windows, reproducibly — see

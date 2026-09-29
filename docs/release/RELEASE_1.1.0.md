@@ -177,8 +177,12 @@ cycle:
   above.
 - **Linux and macOS were not compiled or run.** Only the source audit above was
   performed.
-- **A version upgrade and a refused downgrade** still have not been exercised
-  across two shipped versions in the same pass.
+- **A downgrade is not refused.** `allowDowngrades` is `false`, but the NSIS
+  template only enforces it on the interactive reinstall page, where a
+  downgrade requires uninstalling the newer version first; a silent install
+  replaces the newer build outright. The upgrade from 1.0.0 to 1.1.0 was
+  exercised and works, and a downgraded build refuses a newer history document
+  rather than corrupting it.
 
 ## Release procedure
 

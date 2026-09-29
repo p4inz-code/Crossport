@@ -77,5 +77,7 @@ step.
 - Artifacts are unsigned: Windows shows an unknown-publisher warning until a
   certificate is configured (`docs/development/RELEASE_PROCESS.md`).
 - Only Windows artifacts are built. No macOS or Linux bundle exists yet.
-- A version upgrade and a refused downgrade have not been exercised, because
-  only one version exists. Re-check both at the first real version bump.
+- A version upgrade was exercised (1.0.0 → 1.1.0). A downgrade is **not**
+  refused: `allowDowngrades` is `false`, but it is only enforced on the
+  interactive reinstall page, and a silent install replaces the newer build.
+  Re-check both at the next version bump.
