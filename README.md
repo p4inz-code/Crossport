@@ -267,7 +267,7 @@ Third-party dependency licenses are summarized in
 | [`docs/product/CAPABILITY_MATRIX.md`](docs/product/CAPABILITY_MATRIX.md) | Current vs. not-current vs. future capabilities |
 | [`docs/product/PLATFORM_SUPPORT.md`](docs/product/PLATFORM_SUPPORT.md) | Platform support, precisely |
 | [`docs/product/PARAGON_CAPABILITY_GAP.md`](docs/product/PARAGON_CAPABILITY_GAP.md) | Why CrossPort is not a filesystem driver |
-| [`docs/release/RELEASE_1.1.1.md`](docs/release/RELEASE_1.1.1.md) | The current release: what changed and what was verified |
+| [`docs/release/RELEASE_1.1.2.md`](docs/release/RELEASE_1.1.2.md) | The current release: what changed and what was verified |
 | [`ROADMAP.md`](ROADMAP.md) | Engineering phases and future direction |
 | [`CHANGELOG.md`](CHANGELOG.md) | Version history |
 | [`docs/architecture/`](docs/architecture) | Transfer engine, verification, persistence, recovery, security |

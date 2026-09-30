@@ -5,7 +5,7 @@ The three lists are kept apart on purpose: a future capability is never
 described as a current one. Terminology matches the rest of the product
 documentation.
 
-Version: **1.1.1**. Platform: **Windows 10 1607+ / Windows 11, 64-bit**.
+Version: **1.1.2**. Platform: **Windows 10 1607+ / Windows 11, 64-bit**.
 
 ## CURRENT (built, packaged, and tested)
 

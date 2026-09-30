@@ -64,3 +64,54 @@ pub(crate) mod test_support {
         dir
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::blocking_file;
+    use crate::filesystem::test_support::unique_temp_dir;
+    use std::fs;
+
+    /// A path that runs through a regular file can never exist. Windows reports
+    /// that as "not found" and POSIX as ENOTDIR, so `blocking_file` is what lets
+    /// the persistence and safety layers reach one verdict on both.
+    #[test]
+    fn blocking_file_finds_the_file_a_path_runs_through() {
+        let dir = unique_temp_dir("blocking-file");
+        let file = dir.join("a-file");
+        fs::write(&file, b"x").expect("the blocking file should be writable");
+
+        let through = file.join("nested").join("leaf.txt");
+        assert_eq!(
+            blocking_file(&through).as_deref(),
+            Some(file.as_path()),
+            "the closest non-directory ancestor is what blocks the path"
+        );
+
+        let through_dir = dir.join("sub").join("leaf.txt");
+        assert_eq!(
+            blocking_file(&through_dir),
+            None,
+            "a path through real directories is not blocked"
+        );
+
+        assert_eq!(
+            blocking_file(&file),
+            None,
+            "a file does not block itself; only what is in front of it counts"
+        );
+
+        fs::remove_dir_all(&dir).expect("the test directory should be removable");
+    }
+
+    /// Nothing exists on the path, so nothing is in its way either. This is the
+    /// "missing", not "blocked" case the persistence layer reports.
+    #[test]
+    fn blocking_file_ignores_a_path_that_simply_does_not_exist() {
+        let dir = unique_temp_dir("blocking-file-absent");
+        let nothing = dir.join("missing").join("deeper").join("leaf.txt");
+
+        assert_eq!(blocking_file(&nothing), None);
+
+        fs::remove_dir_all(&dir).expect("the test directory should be removable");
+    }
+}

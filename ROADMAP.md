@@ -22,8 +22,8 @@ The Windows product, complete and packaged.
   navigation.
 - Windows installers (NSIS + WiX MSI) built locally with SHA-256 checksums.
 
-The current release is **1.1.1**; see
-[`docs/release/RELEASE_1.1.1.md`](docs/release/RELEASE_1.1.1.md). The **1.0.0**
+The current release is **1.1.2**; see
+[`docs/release/RELEASE_1.1.2.md`](docs/release/RELEASE_1.1.2.md). The **1.0.0**
 baseline remains frozen and untouched.
 
 ## NEXT — realistic engineering work on the Windows product
@@ -175,7 +175,7 @@ critical production bugs, and release-blocking corrections may change the
 - [x] The whole interface drawn from the shared design tokens
 - [x] Annotated tag `v1.1.0`
 
-### Release 1.1.1 — corrective release (current)
+### Release 1.1.1 — corrective release
 
 - [x] Fixed a wire-contract defect in the live transfer snapshot: the rendered
       verification verdict is now serialized with the job, so the queue renders
@@ -184,3 +184,18 @@ critical production bugs, and release-blocking corrections may change the
 - [x] Windows installers rebuilt and checksummed; annotated tag `v1.1.1`
 
 The `v1.0.0` and `v1.1.0` tags and their artifacts are untouched.
+
+### Release 1.1.2 — corrective release (current)
+
+- [x] Preserved corrupt documents can no longer collide and overwrite each
+      other; the preserved name carries an attempt counter, with a regression
+      test asserting that each copy keeps its own name
+- [x] Error classification no longer depends on a Windows-only error kind:
+      `filesystem::blocking_file` decides whether a path runs through a regular
+      file, so persistence, the safety rules, and the test suite reach the same
+      verdict on every platform
+- [x] The repository's current line is licensed Apache-2.0 under P4inz
+      Interactive Labs, with `NOTICE` and `docs/legal/LICENSING.md`
+- [x] Windows installers rebuilt and checksummed; annotated tag `v1.1.2`
+
+The `v1.0.0`, `v1.1.0`, and `v1.1.1` tags and their artifacts are untouched.

@@ -1,6 +1,6 @@
 {
   "name": "crossport",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "private": true,
   "description": "Windows file-transfer utility for copying and moving files between mounted volumes",
   "license": "Apache-2.0",

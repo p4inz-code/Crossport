@@ -7,18 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-09-30
+
+Corrective release on the Windows 1.1 line. No new capabilities: it ships the
+fixes that landed on `main` after `v1.1.1`, and it is the first release built
+from the repository's Apache-2.0 development line.
+
+### Fixed
+
+- **Two preserved copies can no longer overwrite each other.** When an unusable
+  history or settings file was set aside for inspection, the preserved name came
+  from a millisecond timestamp alone, so two files preserved in the same
+  millisecond collided and the second `rename` silently replaced the first. The
+  name now carries an attempt counter. The collision was reproduced at 9
+  failures in 60 runs before the change and 0 in 320 after it.
+- **Error classification no longer assumes Windows path semantics.** A path
+  whose closest existing ancestor is a regular file is classified as
+  missing / not-a-directory on every target, through `filesystem::blocking_file`,
+  instead of reading `io::ErrorKind::NotADirectory` — which the platforms report
+  differently, and which would have raised the crate's declared MSRV (1.77.2) to
+  read. Persistence, the safety rules, and the test suite now behave identically
+  on every platform.
+
 ### Changed
 
-- **The current development line is now licensed under Apache-2.0**, with a
-  `NOTICE` file providing the copyright attribution and
-  `docs/legal/LICENSING.md` recording the history. CrossPort 1.1.1 and earlier
-  releases were published under the MIT License; those releases, their tags, and
-  their installers are unchanged and are not being relicensed.
+- **The current development line is licensed under Apache-2.0**, with a `NOTICE`
+  file providing the copyright attribution and `docs/legal/LICENSING.md`
+  recording the history. CrossPort 1.1.1 and earlier releases were published
+  under the MIT License; those releases, their tags, and their installers are
+  unchanged and are not being relicensed.
 - **Ownership and branding: "CrossPort Contributors" is replaced by P4inz
   Interactive Labs** in current metadata — the crate authors, the Tauri bundle
   publisher and copyright, and the root package description (which no longer
   calls the product cross-platform, because Windows is the only supported
   platform).
+- The public showcase screenshots were recaptured from the application installed
+  by the published 1.1.1 installer, without the notification overlays the
+  previous pair carried.
 
 ## [1.1.1] - 2026-09-29
 

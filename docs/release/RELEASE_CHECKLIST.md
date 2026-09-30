@@ -4,9 +4,9 @@ The pass to run before tagging. It matches what the repository actually does —
 Windows artifacts built locally, no publishing automation — so nothing here
 describes a workflow that does not exist.
 
-`docs/release/RELEASE_1.1.1.md` is the release document this checklist verifies
-for the current line (with `RELEASE_1.1.0.md` and `RELEASE_1.0.md` kept as the
-records for those releases): version, platform, installation, functionality,
+`docs/release/RELEASE_1.1.2.md` is the release document this checklist verifies
+for the current line (with `RELEASE_1.1.1.md`, `RELEASE_1.1.0.md`, and
+`RELEASE_1.0.md` kept as the records for those releases): version, platform, installation, functionality,
 verification, recovery, security model, artifacts, limitations, and what is
 deliberately not supported. Keep them in step.
 

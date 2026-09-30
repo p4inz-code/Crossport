@@ -2,6 +2,11 @@
 
 Status: built and validated on Windows. Not code-signed. Windows only.
 
+> **Superseded by [1.1.2](RELEASE_1.1.2.md).** The 1.1.1 artifacts predate the
+> fixes on `main` that 1.1.2 ships: a preserved-document naming collision and
+> the platform-neutral error classification. This document is kept as the record
+> of that release and is not updated further.
+
 This is a **corrective patch** on the Windows 1.1 line. It restores the product
 documented in `docs/release/RELEASE_1.1.0.md`, which remains the document for
 that release. The `v1.0.0` and `v1.1.0` tags and their artifacts are untouched.

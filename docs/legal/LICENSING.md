@@ -18,7 +18,8 @@ Apache License 2.0 expects.
 | CrossPort 1.0.0 | MIT |
 | CrossPort 1.1.0 | MIT |
 | CrossPort 1.1.1 | MIT |
-| Current development line (after 1.1.1) | Apache-2.0 |
+| CrossPort 1.1.2 | Apache-2.0 |
+| Current development line | Apache-2.0 |
 
 CrossPort up to and including **1.1.1** was released under the MIT License.
 Those releases had already been published under MIT when this repository
@@ -36,7 +37,8 @@ Concretely:
   it is not claimed here.
 
 The migration applies to the repository's current development line: the code on
-`main` after the 1.1.1 release. New releases from this line are Apache-2.0.
+`main` after the 1.1.1 release. CrossPort **1.1.2** is the first release taken
+from that line, and it is Apache-2.0. Every release from it is.
 
 ## Documentation and documents that still say MIT
 
