@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The current development line is now licensed under Apache-2.0**, with a
+  `NOTICE` file providing the copyright attribution and
+  `docs/legal/LICENSING.md` recording the history. CrossPort 1.1.1 and earlier
+  releases were published under the MIT License; those releases, their tags, and
+  their installers are unchanged and are not being relicensed.
+- **Ownership and branding: "CrossPort Contributors" is replaced by P4inz
+  Interactive Labs** in current metadata — the crate authors, the Tauri bundle
+  publisher and copyright, and the root package description (which no longer
+  calls the product cross-platform, because Windows is the only supported
+  platform).
+
 ## [1.1.1] - 2026-09-29
 
 Corrective release for the Windows 1.1 line. No new capabilities; the product

@@ -5,10 +5,22 @@
 The product is called **CrossPort** (one word, capitals C and P). Avoid
 "Crosport", "Cross-Port", or "Cross Port".
 
+## Studio
+
+CrossPort is a product of **P4inz Interactive Labs**. Use that exact form where a
+product/company relationship is stated — the installer publisher, package
+metadata, copyright lines, and release attribution. Do not invent a legal suffix
+(Ltd, LLC, Inc, and so on), a registration number, a legal address, or a company
+website. The studio name is not a substitute for the product name: copy about the
+software says "CrossPort".
+
 ## Positioning
 
-A fast, reliable, cross-platform file transfer utility — free forever, offline
-first, no ads, no telemetry. See `docs/product/VISION.md`.
+A fast, reliable desktop file-transfer utility: free, offline first, no ads, no
+telemetry, no account. Windows is the only packaged and tested platform today;
+the macOS and Linux work is application foundation only and must never be
+described as support (`docs/product/PLATFORM_SUPPORT.md`). The longer-term
+direction is in `docs/product/VISION.md`.
 
 ## Visual identity
 

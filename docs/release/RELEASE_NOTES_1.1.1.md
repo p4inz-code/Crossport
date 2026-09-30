@@ -105,3 +105,7 @@ settings, history, and logs are kept under `%APPDATA%\com.crossport.app` and
 
 CrossPort is free and offline: no account, no telemetry, no background
 synchronization. MIT licensed.
+
+*Historical note: CrossPort 1.1.1 was published under the MIT License, and the
+installers attached to this release carry that license text. The current
+development line is Apache-2.0 — see `docs/legal/LICENSING.md`.*

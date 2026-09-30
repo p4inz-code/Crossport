@@ -1,5 +1,7 @@
 # CrossPort
 
+*A product of P4inz Interactive Labs.*
+
 **A professional file-transfer utility for moving and verifying files across
 mounted volumes.**
 
@@ -247,7 +249,14 @@ or prefer a card?
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE). Copyright © 2026 CrossPort Contributors.
+CrossPort is licensed under the **Apache License 2.0** — see [`LICENSE`](LICENSE).
+Copyright 2026 P4inz Interactive Labs; see [`NOTICE`](NOTICE).
+
+CrossPort 1.1.1 and earlier releases were published under the MIT License and
+remain under it. The migration applies to the current development line; the tags
+and installers of the earlier releases are unchanged. The history is recorded in
+[`docs/legal/LICENSING.md`](docs/legal/LICENSING.md).
+
 Third-party dependency licenses are summarized in
 [`docs/legal/THIRD_PARTY_LICENSES.md`](docs/legal/THIRD_PARTY_LICENSES.md).
 
@@ -266,3 +275,5 @@ Third-party dependency licenses are summarized in
 | [`docs/reference/GLOSSARY.md`](docs/reference/GLOSSARY.md) | Terminology |
 | [`SUPPORT.md`](SUPPORT.md) | Getting help |
 | [`SECURITY.md`](SECURITY.md) | Reporting a vulnerability |
+| [`docs/legal/LICENSING.md`](docs/legal/LICENSING.md) | Licensing history and the Apache-2.0 migration |
+| [`NOTICE`](NOTICE) | Copyright attribution |

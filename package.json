@@ -2,8 +2,8 @@
   "name": "crossport",
   "version": "1.1.1",
   "private": true,
-  "description": "Cross-platform file transfer utility",
-  "license": "MIT",
+  "description": "Windows file-transfer utility for copying and moving files between mounted volumes",
+  "license": "Apache-2.0",
   "packageManager": "pnpm@10.0.0",
   "engines": {
     "node": ">=22"

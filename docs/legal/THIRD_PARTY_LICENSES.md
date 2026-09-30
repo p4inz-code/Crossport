@@ -1,6 +1,8 @@
 # Third-Party Licenses
 
-CrossPort is distributed under the MIT license (see `LICENSE`). It depends on
+CrossPort's current development line is distributed under the Apache License 2.0
+(see `LICENSE`). Releases up to and including 1.1.1 were published under the MIT
+License and remain under it (see `docs/legal/LICENSING.md`). CrossPort depends on
 third-party libraries; their licenses are preserved as follows:
 
 - **Frontend/JS** — dependency metadata is recorded in `package.json` /

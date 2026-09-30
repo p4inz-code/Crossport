@@ -32,5 +32,13 @@ automation, no update server, and no macOS or Linux bundle. CI (`.github/workflo
 runs lint, tests, and the version check only — it never builds installers.
 
 A tagged `v*` push does not trigger any workflow. Tagging is a record of what
-was released, not a build trigger; the artifacts are attached to the release by
-hand, with their `checksums.txt` digests.
+was released, not a build trigger; the artifacts areattached to the release by hand, with their `checksums.txt` digests.
+
+## License
+
+The current development line is **Apache-2.0** — see `LICENSE`, `NOTICE`, and
+`docs/legal/LICENSING.md`. Releases up to and including 1.1.1 were published
+under the MIT License and are not being relicensed.
+
+A version bump never changes the license. The license is a repository-level fact
+that changes only by a deliberate, documented migration, not by a release.

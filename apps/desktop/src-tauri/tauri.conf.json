@@ -32,8 +32,8 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "publisher": "CrossPort Contributors",
-    "copyright": "Copyright © 2026 CrossPort Contributors",
+    "publisher": "P4inz Interactive Labs",
+    "copyright": "Copyright © 2026 P4inz Interactive Labs",
     "category": "Utility",
     "shortDescription": "Copy and move files between volumes, and prove what landed.",
     "longDescription": "CrossPort copies and moves files and folders between volumes. Every transfer is reviewed before it is queued, verified after it is written, kept in a durable history, and left for the user to restart or discard if it is interrupted. It works offline, with no account, no telemetry, and no background synchronization.",

@@ -72,6 +72,17 @@ deliberately not supported. Keep them in step.
 - [ ] Release notes written from `RELEASE_TEMPLATE.md`, listing the artifact
       names with their SHA-256 digests from `checksums.txt`
 
+## Legal and branding metadata
+
+- [ ] `LICENSE` and `NOTICE` are at the repository root and describe the current
+      license (`docs/legal/LICENSING.md`)
+- [ ] `license` is consistent across `package.json`, `apps/desktop/package.json`,
+      and `apps/desktop/src-tauri/Cargo.toml`
+- [ ] The Tauri bundle `publisher` and `copyright` name P4inz Interactive Labs,
+      not a personal name and not an earlier studio name
+- [ ] The bundled license file (`bundle.licenseFile`) still points at the
+      repository `LICENSE`
+
 ## Known gaps
 
 - Artifacts are unsigned: Windows shows an unknown-publisher warning until a

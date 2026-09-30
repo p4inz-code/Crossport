@@ -2,7 +2,7 @@
 
 Version: 1.0
 Status: Approved
-Owner: Atharva Patil
+Owner: P4inz Interactive Labs
 
 ---
 
