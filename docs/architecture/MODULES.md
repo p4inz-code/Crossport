@@ -1,4 +1,4 @@
-# Module Architecture
+# Module architecture
 
 Version: 4.0
 Status: Approved
@@ -12,7 +12,7 @@ workspace. Modules are organized within the app, not as separate packages.
 | Module | Responsibility | Dependency rules |
 | --- | --- | --- |
 | `app/` | Application shell, providers, root routing | Depends on layouts, components, stores, features |
-| `features/` | Implemented feature folders: `drives` (volume list, directory browser, transfer composer), `transfers` (queue surface, composer dialog), `history`, `recovery`, `notifications`, `settings` — each with its own presentation helpers | Each feature owns its pages and components; no cross-feature imports. `drives` renders the `transfers` composer dialog, which is the one shared presentational component, not a state dependency |
+| `features/` | Implemented feature folders: `drives` (volume list, directory browser, transfer composer), `transfers` (queue surface, composer dialog), `history`, `recovery`, `notifications`, `settings`, each with its own presentation helpers | Each feature owns its pages and components; no cross-feature imports. `drives` renders the `transfers` composer dialog, which is the one shared presentational component, not a state dependency |
 | `components/ui/` | Reusable UI primitives (Button, Card, EmptyState, …) | No business logic; depends only on `lib`, tokens |
 | `layouts/` | AppShell, TopBar, Sidebar, StatusBar, PageContainer | Depends on components, stores, lib |
 | `stores/` | Zustand stores (app, system, drives, browser, transfers, settings, history, recovery, notifications) | Owns client state; talks to services. The transfer store merges job snapshots by identifier and never synthesizes progress; the notification store is bounded and deduplicated by job and event |
@@ -62,7 +62,7 @@ implemented.
 - The transfer engine depends on `platform/`, `filesystem/`, and `errors/`, and
   nothing depends on it except the command layer, the event publisher, and the
   archive's journal port, so it stays testable without a window. Every number the
-  UI shows — sizes, speeds, ETAs, collisions, check counts, verdicts — is
+  UI shows, sizes, speeds, ETAs, collisions, check counts, verdicts, is
   produced by the backend, never by the frontend.
 - The archive is the only module that knows both the live engine and the durable
   side. It is opened during setup, installed into `AppState`, and reached through

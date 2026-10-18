@@ -8,7 +8,7 @@ These boundaries protect the project's identity and prevent feature creep.
 
 ---
 
-# CrossPort Is NOT
+# CrossPort is NOT
 
 - A disk partition manager
 - A disk formatter
@@ -28,7 +28,7 @@ These boundaries protect the project's identity and prevent feature creep.
 
 ---
 
-# CrossPort Will Not
+# CrossPort will not
 
 - Require user accounts
 - Require subscriptions
@@ -42,7 +42,7 @@ These boundaries protect the project's identity and prevent feature creep.
 
 ---
 
-# Feature Acceptance Criteria
+# Feature acceptance Criteria
 
 A feature should only be accepted if it directly improves:
 
@@ -56,7 +56,7 @@ If a proposed feature does not strengthen one of these areas, it likely belongs 
 
 ---
 
-# Engineering Principle
+# Engineering principle
 
 Simple software is easier to trust.
 
@@ -64,8 +64,8 @@ CrossPort should remain focused, maintainable, and understandable throughout its
 
 ---
 
-# Final Principle
+# Final principle
 
-CrossPort aims to become the most recommended free tool for moving files between Windows, macOS, and Linux—not the largest desktop utility suite.
+CrossPort aims to become the most recommended free tool for moving files between Windows, macOS, and Linux, not the largest desktop utility suite.
 
 Every new feature should reinforce that mission.

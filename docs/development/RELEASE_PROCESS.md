@@ -1,4 +1,4 @@
-# Release Process
+# Release process
 
 CrossPort releases are built locally. There is no publishing automation, no
 update server, and no code signing in this repository yet; the process below
@@ -12,7 +12,7 @@ directory.
    `apps/desktop/src-tauri/tauri.conf.json`, and
    `apps/desktop/src-tauri/Cargo.toml`.
 3. Add a `CHANGELOG.md` entry.
-4. Run `bash scripts/check-versions.sh` — CI enforces this too.
+4. Run `bash scripts/check-versions.sh`: CI enforces this too.
 
 ## Pre-release verification
 
@@ -79,17 +79,17 @@ sha256sum -c checksums.txt
   in `tauri.conf.json` renames cargo's `crossport` binary before bundling, so
   the file a user sees matches the product rather than the crate.
 - They do not touch `%APPDATA%\com.crossport.app` or
-  `%LOCALAPPDATA%\com.crossport.app` — the settings, history, recovery state,
+  `%LOCALAPPDATA%\com.crossport.app`: the settings, history, recovery state,
   logs, and WebView2 profile a previous install created. Both installers can be
   run over an existing installation of the same version: the program files are
   replaced and the user's data is kept.
-- Installing an older version over a newer one is **not** blocked.
+- Installing an older version over a newer one is not blocked.
   `bundle > windows > allowDowngrades` is `false`, but the NSIS template that
   reads it only enforces it on the interactive reinstall page, where a
   downgrade requires uninstalling the newer version first; a silent install
   (`/S`) skips that page and replaces the newer build outright. A downgraded
-  build does not corrupt user data — a newer history document is refused and
-  left untouched rather than read — but only install a build you mean to run.
+  build does not corrupt user data, a newer history document is refused and
+  left untouched rather than read. But only install a build you mean to run.
 - Uninstalling removes the program files, the shortcuts, and the uninstall
   entry. It leaves the user data directories in place; deleting them is the
   user's decision.
@@ -100,7 +100,7 @@ Run against the built installer on Windows: a fresh install, launching the
 installed `CrossPort.exe` on an isolated desktop, a same-version reinstall over
 it, and an uninstall. Each step was checked for its result, not just its exit
 code: the install directory, the `HKCU\...\Uninstall\CrossPort` entry, the
-shortcut, and — after the uninstall — that
+shortcut, and, after the uninstall, that
 `%APPDATA%\com.crossport.app` and `%LOCALAPPDATA%\com.crossport.app` are still
 there.
 

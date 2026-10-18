@@ -1,4 +1,4 @@
-# Recovery Architecture
+# Recovery architecture
 
 Version: 1.0
 Status: Approved
@@ -6,7 +6,7 @@ Status: Approved
 ## Purpose
 
 Recovery is what CrossPort does about a transfer that was running when the
-application — or Windows — stopped. It answers three questions:
+application, or Windows, stopped. It answers three questions:
 
 1. What was in flight, and how far did it get?
 2. Can it be run again, and what would running it again do to the destination?
@@ -28,8 +28,8 @@ jobs (`MAX_STATE_JOBS`); reaching that bound means the application died
 mid-transfer a hundred times without the list ever being cleared, so the oldest
 entries are dropped and the drop is logged. Each entry stores:
 
-- the **whole request** — sources, destination, operation, conflict strategy, and
-  verification policy — because that is what a restart replays, unchanged;
+- the whole request: sources, destination, operation, conflict strategy, and
+  verification policy, because that is what a restart replays, unchanged;
 - the job's status when it was last written;
 - queue/start/update timestamps;
 - counters (`PersistedProgress`), deliberately without speed, ETA, or elapsed
@@ -40,7 +40,7 @@ entries are dropped and the drop is logged. Each entry stores:
 ### Write ordering is the correctness property
 
 1. While a job runs, its live state is replaced on its cadence.
-2. When it finishes, its **history record is written first**.
+2. When it finishes, its history record is written first.
 3. Only then is the live state forgotten.
 
 A crash between 2 and 3 leaves a job recovery can recognise as finished from the
@@ -60,7 +60,7 @@ leftovers.
 **Byte-offset continuation of those leftovers is not offered.** Nothing
 persisted proves which prefix of a partial file is valid, so a restart starts
 the affected files from zero after the leftovers are removed. Correctness is
-worth more than resume speed — and the partial files are exactly what would make
+worth more than resume speed. And the partial files are exactly what would make
 resuming wrong.
 
 ## Classifying a job
@@ -70,7 +70,7 @@ verdict, not a suggestion:
 
 | Outcome | Meaning | Restart offered |
 | --- | --- | --- |
-| `completed_before_crash` | The archive's own record shows the job reached a terminal state before the application stopped | No — nothing needs to run |
+| `completed_before_crash` | The archive's own record shows the job reached a terminal state before the application stopped | No, nothing needs to run |
 | `restart_required` | The job did not finish and can be run again from the beginning | Yes |
 | `source_missing` | A source the job needs is gone | No |
 | `destination_unavailable` | The destination is missing, is not a directory, or cannot be written | No |
@@ -82,11 +82,11 @@ never has to invent one.
 Two further pieces of information are offered, and both are labelled as the
 weaker kind of statement they are:
 
-- `destinationLooksComplete` — the result of re-planning the job and finding
+- `destinationLooksComplete`: the result of re-planning the job and finding
   every planned item in place with the expected size. It is **evidence, not
   proof**, it is bounded (20,000 items, then the answer is `null`, "unknown"),
   and it never on its own turns a job into `completed_before_crash`.
-- `restartImpact` — what running the job again would do: the strategy in force,
+- `restartImpact`: what running the job again would do: the strategy in force,
   how many items collide, how many would be left alone, the bytes and files
   involved, and whether the restart would overwrite anything. A restart is
   re-planned under the strategy the user originally chose.
@@ -96,8 +96,8 @@ weaker kind of statement they are:
 The scan looks for the engine's own temporary files in the directories a job
 planned to write into (`artifact_directories`), and matches them **exactly** to
 the job being examined (`is_artifact_of`): only `.crossport-<job>-<index>.partial`
-for that job's identifier. Another job's leftovers — or a file that merely looks
-like an artifact — are never touched.
+for that job's identifier. Another job's leftovers, or a file that merely looks
+like an artifact, are never touched.
 
 The scan is bounded and reports `artifactsTruncated` when it hit the bound, so
 "no artifacts found" is never a guess.
@@ -127,9 +127,9 @@ action.
 
 - The archive is opened during setup; the recovery candidates are read once and
   exposed through `list_recovery_candidates` / `get_recovery_candidate`.
-- The shell checks for candidates on startup and raises **one** notification
+- The shell checks for candidates on startup and raises one notification
   saying what happened and that a decision is waiting. Recovery never runs
-  anything by itself — restarting a transfer is the user's call.
+  anything by itself, restarting a transfer is the user's call.
 - The Recovery page lists each interrupted job with its outcome, its progress
   before the interruption, what a restart would do, and what is left on disk,
   with Discard and Restart (or Confirm) exactly where they apply.

@@ -1,11 +1,11 @@
-# Capability Matrix
+# Capability matrix
 
 What CrossPort does today, what it deliberately does not, and what is planned.
 The three lists are kept apart on purpose: a future capability is never
 described as a current one. Terminology matches the rest of the product
 documentation.
 
-Version: **1.1.2**. Platform: **Windows 10 1607+ / Windows 11, 64-bit**.
+Version: **1.1.2**. Platform: Windows 10 1607+ / Windows 11, 64-bit.
 
 ## CURRENT (built, packaged, and tested)
 
@@ -30,7 +30,7 @@ Version: **1.1.2**. Platform: **Windows 10 1607+ / Windows 11, 64-bit**.
 | Light / dark / system themes | Drawn from one token set |
 | Keyboard navigation | `Ctrl`/`Cmd`+`1`…`6` between pages; `Alt`+arrows in the browser |
 
-## NOT CURRENT (deliberately out of scope — not attempted)
+## NOT CURRENT (deliberately out of scope: not attempted)
 
 These require privileged, driver-level, or OS-internal integration. CrossPort
 adds no UI for any of them: a control that cannot work is worse than an absent

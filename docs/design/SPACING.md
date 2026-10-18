@@ -31,7 +31,7 @@ as a 4px-based scale (`--space-*`).
 
 ## Rules
 
-- Use tokens for margin, padding, and gap — never raw values.
+- Use tokens for margin, padding, and gap, never raw values.
 - Default component rhythm: `--space-4` for card headers, `--space-5` for card
   bodies, `--space-6` between page sections.
 - Half steps (`-0-5`, `-1-5`, `-2-5`) are for fine-grained alignment.

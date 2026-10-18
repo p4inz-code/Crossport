@@ -1,4 +1,4 @@
-# CrossPort Error Handling
+# CrossPort error handling
 
 Version: 3.0
 Status: Approved
@@ -23,9 +23,9 @@ structured object:
 { "code": "path_not_found", "message": "path not found: D:\\Media" }
 ```
 
-- `code` — stable machine-readable identifier. The frontend switches on it and
+- `code`: stable machine-readable identifier. The frontend switches on it and
   never string-matches `message`.
-- `message` — human-readable detail for display, logging, and bug reports.
+- `message`: human-readable detail for display, logging, and bug reports.
 
 ### Backend codes
 
@@ -59,7 +59,7 @@ meaningful code instead of a bare message.
 | `unknown` | No structured information; `message` carries the detail |
 
 The frontend type is `IpcError` (`src/services/ipc.ts`) and carries `code`,
-`message`, and — when the backend reports a code outside the published contract
+`message`, and, when the backend reports a code outside the published contract
 — the original code in `unsupportedCode` so diagnostics lose nothing.
 
 The frontend mirrors the backend code list in `BACKEND_ERROR_CODES`. Drift
@@ -102,7 +102,7 @@ between the two is a bug: the Rust list is covered by
 ## Logging
 
 Backend logs go to stdout and to a rotating per-app log file (5 MiB × 3) in the
-platform log directory, so release builds on Windows — which have no console —
+platform log directory, so release builds on Windows. Which have no console
 remain diagnosable. Startup logs the version, platform, loaded preferences, and
 the resolved config/log directories.
 

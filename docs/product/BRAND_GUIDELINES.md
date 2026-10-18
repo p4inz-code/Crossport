@@ -8,7 +8,7 @@ The product is called **CrossPort** (one word, capitals C and P). Avoid
 ## Studio
 
 CrossPort is a product of **P4inz Interactive Labs**. Use that exact form where a
-product/company relationship is stated — the installer publisher, package
+product/company relationship is stated, the installer publisher, package
 metadata, copyright lines, and release attribution. Do not invent a legal suffix
 (Ltd, LLC, Inc, and so on), a registration number, a legal address, or a company
 website. The studio name is not a substitute for the product name: copy about the
@@ -28,7 +28,7 @@ direction is in `docs/product/VISION.md`.
   (primary blue `#2563eb` in light theme).
 - Typography: the `--font-sans` stack (Inter first).
 - Iconography: lucide icons, 1.75 stroke default.
-- The interface is calm, professional, and uncluttered — never flashy or
+- The interface is calm, professional, and uncluttered, never flashy or
   gaming-styled.
 
 ## Logo

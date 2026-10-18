@@ -1,5 +1,5 @@
 > **Status: read paths and the transfer engine implemented.** Path normalization and validation (`src-tauri/src/filesystem/path.rs`), metadata inspection (`metadata.rs`), single-directory listing (`directory.rs`), ancestor resolution for breadcrumbs (`ancestors.rs`), volume detection with classification and capacity (`platform/volume.rs`, `platform/drives.rs`), and the native folder picker (`commands/dialog.rs`) exist today. The transfer engine builds on this layer for recursive copy/move (`src-tauri/src/transfer/`) and verifies what it wrote (`src-tauri/src/verification/`). Sections below that describe unimplemented behavior are planning material.
-# CrossPort Filesystem Engine
+# CrossPort filesystem engine
 
 Version: 2.0
 
@@ -25,12 +25,12 @@ Its purpose is to hide platform differences while maintaining reliable file oper
 | Volume model | `platform/volume.rs` | Volume kind, name, filesystem, total/free/used capacity, read-only flag, mounted status; facts the platform does not report stay unknown |
 | Volume detection | `platform/drives.rs` | Candidates from the platform, probed on Windows through `GetDriveTypeW` / `GetDiskFreeSpaceExW` / `GetVolumeInformationW`, deduplicated and sorted |
 | Directory listing | `filesystem/directory.rs` | One directory per request, typed entries (name, path, kind, size, modified, read-only), directories before files, truncated at 10,000 entries, symlinks reported but never followed |
-| Path ancestors | `filesystem/ancestors.rs` | The path and every directory above it, oldest first, each step validated and labeled — what the breadcrumb trail is built from, so the frontend never assembles a path itself |
+| Path ancestors | `filesystem/ancestors.rs` | The path and every directory above it, oldest first, each step validated and labeled, what the breadcrumb trail is built from, so the frontend never assembles a path itself |
 | Native dialog | `commands/dialog.rs` | Folder selection validated before it reaches the frontend |
 
 Nothing in the browsing path mutates the filesystem and no browsing operation recurses: the browser lists one directory at a time. Tree walking and every write live in the transfer engine, which consumes this layer's path and safety helpers instead of duplicating them.
 
-The browser keeps a bounded back/forward history in the frontend (`src/stores/browser-store.ts`), but every path it navigates to is one the backend produced — a listing's own path, a parent the backend reported, or an ancestor the backend resolved. A trail that cannot be read leaves the crumbs empty rather than failing the folder that was opened.
+The browser keeps a bounded back/forward history in the frontend (`src/stores/browser-store.ts`), but every path it navigates to is one the backend produced: a listing's own path, a parent the backend reported, or an ancestor the backend resolved. A trail that cannot be read leaves the crumbs empty rather than failing the folder that was opened.
 
 ---
 
@@ -58,7 +58,7 @@ The Filesystem Engine does not handle:
 
 ---
 
-# Platform Support
+# Platform support
 
 The engine must support:
 
@@ -70,7 +70,7 @@ Platform-specific behavior must remain isolated.
 
 ---
 
-# Filesystem Abstraction
+# Filesystem abstraction
 
 CrossPort should not assume every filesystem behaves identically.
 
@@ -90,7 +90,7 @@ Filesystem
 
 ---
 
-# Drive Discovery
+# Drive discovery
 
 Volume detection provides, where the platform reports it:
 
@@ -109,7 +109,7 @@ Linux) is reported as `unknown`.
 
 ---
 
-# Safety Rules
+# Safety rules
 
 The Filesystem Engine must:
 
@@ -130,7 +130,7 @@ Requirements:
 
 ---
 
-# Future Support
+# Future support
 
 Architecture should allow future support for:
 

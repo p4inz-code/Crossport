@@ -1,5 +1,5 @@
-> **Status: future phase — not yet implemented.** This document describes the planned design for a later phase; the repository currently implements Phases 1–4 (settings, platform volumes, filesystem browsing, transfers, verification, recovery, and history).
-# CrossPort Update System
+> **Status: future phase: not yet implemented.** This document describes the planned design for a later phase; the repository currently implements Phases 1-4 (settings, platform volumes, filesystem browsing, transfers, verification, recovery, and history).
+# CrossPort update system
 
 Version: 1.0
 
@@ -23,7 +23,7 @@ No unexpected restarts.
 
 ---
 
-# Update Process
+# Update process
 
 ```
 Check
@@ -52,7 +52,7 @@ Install
 
 ---
 
-# Internet Usage
+# Internet usage
 
 Update checking is optional.
 
@@ -70,7 +70,7 @@ Future support:
 
 ---
 
-# Release Information
+# Release information
 
 Every update should include:
 

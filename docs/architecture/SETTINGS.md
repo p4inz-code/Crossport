@@ -1,4 +1,4 @@
-# Settings Architecture
+# Settings architecture
 
 Version: 1.0
 Status: Approved
@@ -23,11 +23,11 @@ second source of truth.
 ## Schema
 
 - `theme`: `"light" | "dark" | "system"` (validated by zod and by Rust)
-- `locale`: 2–16 characters
-- `verification`: `"none" | "size" | "checksum"` — how thoroughly a new transfer
+- `locale`: 2-16 characters
+- `verification`: `"none" | "size" | "checksum"`: how thoroughly a new transfer
   verifies what it writes. Default `size`; see
   `docs/architecture/VERIFICATION.md`
-- `historyLimit`: integer 20–2000 — how many finished transfers history keeps
+- `historyLimit`: integer 20-2000: how many finished transfers history keeps
   (`DEFAULT_HISTORY_LIMIT` 200, `MIN_HISTORY_LIMIT` 20, `MAX_HISTORY_LIMIT`
   2000). The same three constants live in `history/mod.rs` and in
   `src/types/settings.ts`
@@ -38,7 +38,7 @@ Both sides enforce the same rules; the Rust side is authoritative.
 
 `verification` is **folded into a job's request** when it is planned or started,
 so a queued or running job keeps the policy it was shown at the time. Changing
-the setting affects the next job, never one already accepted — and history
+the setting affects the next job, never one already accepted. And history
 records the policy a job actually ran under.
 
 `historyLimit` applies immediately: `update_settings` propagates it to the open

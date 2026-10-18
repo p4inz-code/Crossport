@@ -1,10 +1,10 @@
-# CrossPort Coding Rules
+# CrossPort coding rules
 
 Version: 1.0
 
 ---
 
-# General Rules
+# General rules
 
 Code must prioritize:
 
@@ -14,7 +14,7 @@ Code must prioritize:
 
 ---
 
-# Architecture Rules
+# Architecture rules
 
 Never:
 
@@ -25,7 +25,7 @@ Never:
 
 ---
 
-# Type Safety
+# Type safety
 
 Avoid:
 
@@ -44,7 +44,7 @@ Every major feature requires:
 
 ---
 
-# Error Handling
+# Error handling
 
 Never silently fail.
 
@@ -66,7 +66,7 @@ Every dependency must justify:
 
 ---
 
-# AI Development Rules
+# AI development rules
 
 AI-generated code must:
 

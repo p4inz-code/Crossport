@@ -15,6 +15,6 @@ CrossPort ships with real, runnable tests for both halves of the stack.
 
 ## Guarantees
 
-- The frontend suite fails when zero test files are found — a green result
+- The frontend suite fails when zero test files are found, a green result
   always means tests ran.
 - CI (`ci.yml`) runs both suites plus lint, format, build, and version checks.

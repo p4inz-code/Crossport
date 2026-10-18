@@ -1,4 +1,4 @@
-# CrossPort 1.1.0 — release document
+# CrossPort 1.1.0: release document
 
 Status: built and validated on Windows. Not code-signed. Windows only.
 
@@ -40,17 +40,17 @@ or system extension. See `docs/product/PLATFORM_SUPPORT.md` and
 
 ## What 1.1.0 changes
 
-- **Interface consistency.** Every colour, spacing, radius, and type value now
-  comes from the shared token set. The History and Recovery surfaces — which
-  previously carried hard-coded pixel values — were rebuilt on the design
+- Interface consistency. Every colour, spacing, radius, and type value now
+  comes from the shared token set. The History and Recovery surfaces. Which
+  previously carried hard-coded pixel values, were rebuilt on the design
   system, and the volume cards, transfer cards, composer, sidebar, and card
   primitive were given a consistent hierarchy and complete hover / focus /
   active / disabled states.
-- **Defect fixes.** Four design variables that components referenced were never
+- Defect fixes. Four design variables that components referenced were never
   defined (`--color-surface-muted`, `--color-accent`, `--font-normal`,
   `--space-3-5`); a header-only card drew a stray rule beneath its header; and
   the measurement harness let its scenarios contaminate one another.
-- **Responsive behaviour** was re-verified end to end (below).
+- Responsive behaviour was re-verified end to end (below).
 - No engine, persistence, security, or IPC behaviour changed.
 
 ## Verification performed
@@ -107,9 +107,9 @@ release-artifact smoke test launches the packaged binary.
 
 | Target | What was done | Result |
 | --- | --- | --- |
-| Windows | Built the release binary, NSIS installer, and MSI; ran the artifact smoke test; ran the full Rust suite (real files) | **Validated** |
-| Linux | Source audit of every `#[cfg]` arm; frontend POSIX-path coverage in the existing tests; attempted `cargo check --target x86_64-unknown-linux-gnu` | **Not build-validated** |
-| macOS | Source audit only | **Not build-validated** |
+| Windows | Built the release binary, NSIS installer, and MSI; ran the artifact smoke test; ran the full Rust suite (real files) | Validated |
+| Linux | Source audit of every `#[cfg]` arm; frontend POSIX-path coverage in the existing tests; attempted `cargo check --target x86_64-unknown-linux-gnu` | Not build-validated |
+| macOS | Source audit only | Not build-validated |
 
 The Linux cross-check could not run on this host: it fails inside third-party
 build scripts that need a Linux sysroot and `pkg-config`
@@ -128,7 +128,7 @@ appears in user-facing text, every `windows-sys` call sits inside a
 `#[cfg(windows)]` function with a working non-Windows arm, and the frontend
 reads the host platform from the backend rather than assuming one.
 
-**Linux and macOS remain foundation only — not supported, not claimed.**
+**Linux and macOS remain foundation only. Not supported, not claimed.**
 
 ## Artifacts and checksums
 
@@ -176,13 +176,13 @@ the claims it lists, no byte-offset resume, lexical (not canonical) path
 containment, and long paths needing Windows support. In addition, for this
 cycle:
 
-- **The MSI was built but not installed** (it requires elevation), and the
+- The MSI was built but not installed (it requires elevation), and the
   NSIS install / reinstall / uninstall cycle was not re-run against the 1.1.0
   installers. The installer smoke evidence for 1.1.0 is the artifact smoke test
   above.
-- **Linux and macOS were not compiled or run.** Only the source audit above was
+- Linux and macOS were not compiled or run. Only the source audit above was
   performed.
-- **A downgrade is not refused.** `allowDowngrades` is `false`, but the NSIS
+- A downgrade is not refused. `allowDowngrades` is `false`, but the NSIS
   template only enforces it on the interactive reinstall page, where a
   downgrade requires uninstalling the newer version first; a silent install
   replaces the newer build outright. The upgrade from 1.0.0 to 1.1.0 was
@@ -193,7 +193,7 @@ cycle:
 
 1. `bash scripts/check-versions.sh`
 2. The full gate (see the table above).
-3. `bash scripts/release.sh` — builds the frontend, builds with `--locked`,
+3. `bash scripts/release.sh`: builds the frontend, builds with `--locked`,
    and writes `checksums.txt`.
 4. `cargo test --test artifact_smoke -- --nocapture`
 5. `sha256sum -c checksums.txt` from the bundle directory.

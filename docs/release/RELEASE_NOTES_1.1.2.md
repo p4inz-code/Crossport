@@ -1,6 +1,6 @@
 # CrossPort 1.1.2
 
-A Windows file-transfer utility that moves files between your drives — with a
+A Windows file-transfer utility that moves files between your drives, with a
 review of what will happen before it starts, and proof of what landed when it
 finishes.
 
@@ -13,10 +13,10 @@ background synchronization.
 
 This is a **corrective release**. Nothing new was added; two defects were fixed.
 
-- **Fixed: a second preserved copy could erase the first.** If CrossPort could
+- Fixed: a second preserved copy could erase the first. If CrossPort could
   not use a settings or history file, it sets that file aside so you can inspect
   it. If two files were set aside within the same millisecond, they were given
-  the same name and the second one silently replaced the first — so the evidence
+  the same name and the second one silently replaced the first. So the evidence
   you would need to diagnose the problem could disappear. Preserved files now
   always get their own name.
 - **Fixed: the same input could be classified differently on different
@@ -26,11 +26,11 @@ This is a **corrective release**. Nothing new was added; two defects were fixed.
 
 Also in this release:
 
-- **CrossPort is now licensed under Apache-2.0.** CrossPort 1.1.1 and earlier
-  releases were published under the MIT License and remain under it — their
+- CrossPort is now licensed under Apache-2.0. CrossPort 1.1.1 and earlier
+  releases were published under the MIT License and remain under it. Their
   tags, sources, and installers are unchanged. The history is recorded in
   [`docs/legal/LICENSING.md`](https://github.com/p4inz-code/Crossport/blob/main/docs/legal/LICENSING.md).
-- **The publisher is now P4inz Interactive Labs**, in the installers and the
+- The publisher is now P4inz Interactive Labs, in the installers and the
   package metadata.
 
 ## Core capabilities
@@ -66,16 +66,16 @@ your settings and history in place.
 
 ## Platform status
 
-- **Windows 10 1607+ / Windows 11, 64-bit** — production supported. This is the
+- Windows 10 1607+ / Windows 11, 64-bit: production supported. This is the
   only packaged and tested platform.
-- **macOS and Linux** — application foundation only. Not packaged, not built,
+- macOS and Linux: application foundation only. Not packaged, not built,
   not tested. They are not supported, and they are not described as supported.
 
 CrossPort is an application, not a filesystem driver.
 
 ## Known limitations
 
-- The installers are **not code-signed**, so Windows shows an unknown-publisher
+- The installers are not code-signed, so Windows shows an unknown-publisher
   warning (SmartScreen). Verify a download against `checksums.txt` before
   running it.
 - The MSI is built and its metadata and payload are validated, but it was not
@@ -94,7 +94,7 @@ CrossPort is an application, not a filesystem driver.
 
 ## Installation
 
-1. Download **`CrossPort_1.1.2_x64-setup.exe`** (recommended) or
+1. Download `CrossPort_1.1.2_x64-setup.exe` (recommended) or
    **`CrossPort_1.1.2_x64_en-US.msi`** from the release assets.
 2. Run it. The NSIS installer installs for the current user into
    `%LOCALAPPDATA%\CrossPort` and adds a Start-menu entry and a desktop

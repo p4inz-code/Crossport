@@ -1,5 +1,5 @@
-> **Status: roadmap — partly implemented.** This document describes the planned product journeys; the repository currently implements Phases 1–5 — settings, volume metadata, filesystem browsing, transfers, verification, recovery, and history, plus the end-to-end flow that connects them (browse → select → review → queue → verify → history, and interrupted → recovery). Journeys that depend on Version 2+ work (synchronization, watched folders, scheduling) are not started.
-# CrossPort User Journeys
+> **Status: roadmap, partly implemented.** This document describes the planned product journeys; the repository currently implements Phases 1-5, settings, volume metadata, filesystem browsing, transfers, verification, recovery, and history, plus the end-to-end flow that connects them (browse → select → review → queue → verify → history, and interrupted → recovery). Journeys that depend on Version 2+ work (synchronization, watched folders, scheduling) are not started.
+# CrossPort user journeys
 
 Version: 1.0
 
@@ -15,7 +15,7 @@ The goal is to design workflows that are simple for beginners while remaining po
 
 ---
 
-# Primary User Journey
+# Primary user journey
 
 ## Scenario
 
@@ -27,7 +27,7 @@ A teacher has project files on a Mac drive and needs to access them on Windows.
 
 ---
 
-# Step 1 — Open CrossPort
+# Step 1: open CrossPort
 
 Expected behavior:
 
@@ -40,7 +40,7 @@ User immediately sees available drives.
 
 ---
 
-# Step 2 — Detect Drives
+# Step 2: detect drives
 
 CrossPort displays:
 
@@ -61,7 +61,7 @@ Connected
 
 ---
 
-# Step 3 — Choose Transfer
+# Step 3: choose transfer
 
 Primary action:
 
@@ -81,7 +81,7 @@ Files
 
 ---
 
-# Step 4 — Review
+# Step 4: review
 
 Before starting:
 
@@ -96,7 +96,7 @@ The user understands what will happen.
 
 ---
 
-# Step 5 — Transfer
+# Step 5: transfer
 
 During transfer:
 
@@ -114,7 +114,7 @@ Interface displays:
 
 ---
 
-# Step 6 — Completion
+# Step 6: completion
 
 After completion:
 
@@ -126,7 +126,7 @@ CrossPort shows:
 
 ---
 
-# Error Journey
+# Error journey
 
 Errors should never end the workflow.
 
@@ -152,7 +152,7 @@ Example:
 
 ---
 
-# Advanced User Journey
+# Advanced user journey
 
 Advanced users can enable Advanced Mode.
 
@@ -167,6 +167,6 @@ Advanced features never appear in the default experience.
 
 ---
 
-# Design Principle
+# Design principle
 
 The shortest path to success should always be the default path.

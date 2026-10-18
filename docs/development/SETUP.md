@@ -57,7 +57,7 @@ platform facts, path inspection, and the native folder picker report
 - History and interrupted-transfer state: the same config directory, as
   `transfer-history.json` and `transfer-state.json`.
 - Logs: the platform app-log directory; the plugin writes and rotates a
-  `crossport`-named file there — 5 MiB per file, three files kept
+  `crossport`-named file there: 5 MiB per file, three files kept
   (e.g. Windows `%LOCALAPPDATA%\{identifier}\logs`).
 - WebView2 profile: the platform local-app-data directory
   (e.g. Windows `%LOCALAPPDATA%\{identifier}\EBWebView`).

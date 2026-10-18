@@ -1,4 +1,4 @@
-# Product Constitution
+# Product constitution
 
 Version: 1.0
 

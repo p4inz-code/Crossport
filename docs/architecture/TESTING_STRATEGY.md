@@ -1,4 +1,4 @@
-# Testing Strategy
+# Testing strategy
 
 Version: 3.0
 Status: Approved

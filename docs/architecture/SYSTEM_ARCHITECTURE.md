@@ -1,4 +1,4 @@
-# CrossPort System Architecture
+# CrossPort system architecture
 
 Version: 4.0
 Status: Approved
@@ -11,10 +11,10 @@ today and the principles that keep it stable.
 
 ## Stack
 
-- **Shell:** Tauri 2 (Rust backend + system webview)
-- **Frontend:** React 19, TypeScript (strict), Vite, React Router, Zustand, Zod
-- **Backend:** Rust with typed Tauri commands
-- **Quality:** Vitest (frontend), cargo test (backend), Biome, ESLint, CI
+- Shell: Tauri 2 (Rust backend + system webview)
+- Frontend: React 19, TypeScript (strict), Vite, React Router, Zustand, Zod
+- Backend: Rust with typed Tauri commands
+- Quality: Vitest (frontend), cargo test (backend), Biome, ESLint, CI
 
 ## Layers
 
@@ -94,7 +94,7 @@ One table (`src/lib/navigation.ts`) declares the routes, their labels, and the
 digit that jumps to each one; the sidebar renders it, the top bar names the
 current section from it, and `useAppShortcuts` navigates by it, so the three
 can never drift apart. Shortcuts that would change what is on disk are
-intentionally absent — starting, cancelling, and clearing are buttons. See
+intentionally absent, starting, cancelling, and clearing are buttons. See
 `docs/design/ACCESSIBILITY.md`.
 
 ### Structured errors
@@ -120,7 +120,7 @@ CSP permits Vite HMR. See `SECURITY.md`.
 ## Extensibility
 
 New capabilities are introduced by adding a Rust domain module + command
-surface and a matching frontend feature folder — never by widening existing
+surface and a matching frontend feature folder, never by widening existing
 modules. The roadmap in `ROADMAP.md` describes the planned phases.
 
 ## Non-Goals

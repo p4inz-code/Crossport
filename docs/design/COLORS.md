@@ -27,7 +27,7 @@ values.
 
 ## Rules
 
-- Never reference hex values in components — always use tokens.
+- Never reference hex values in components, always use tokens.
 - Use `-subtle` variants for tinted backgrounds (active nav, empty-state icons).
 - Status colors distinguish success / warning / danger states; use the plain
   token for text and the `-subtle` token for backgrounds.

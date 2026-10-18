@@ -1,4 +1,4 @@
-# Verification Architecture
+# Verification architecture
 
 Version: 1.0
 Status: Approved
@@ -37,7 +37,7 @@ are different facts.
 
 `ChecksumAlgorithm` has exactly one value today (`sha256`). It exists so adding
 an algorithm later is an addition to the contract rather than a redefinition of
-it — and so the checksum that was used travels with the result.
+it, and so the checksum that was used travels with the result.
 
 ## When it runs
 
@@ -59,7 +59,7 @@ been renamed onto its destination and before the item counts as completed.
 ### Checksums are of what was read, not of a second read
 
 Under the `checksum` policy the digest of the source bytes is computed **while
-the file is copied** — the same buffer that is written to the destination is
+the file is copied**, the same buffer that is written to the destination is
 hashed. Verification then hashes the file on disk and compares the two. A source
 that changed mid-copy therefore cannot quietly satisfy the check, and the copy
 is never re-read from the source to "make sure".
@@ -81,22 +81,22 @@ link, and it never reads the source at all.
 | --- | --- |
 | `pending` | Nothing has been checked yet; the job has not reached a file that needs checking |
 | `verifying` | A check is running right now |
-| `verified` | Every checked file matched. Not the same as "every planned file was checked" — see `unverifiedFiles` |
+| `verified` | Every checked file matched. Not the same as "every planned file was checked", see `unverifiedFiles` |
 | `mismatch` | A file exists at the destination but does not match (size, content, missing, or the wrong kind of entry) |
 | `failed` | The check could not be completed (an I/O read failed, or a checksum was required and never computed) |
 | `skipped` | Nothing was checked: the policy is `none`, or no file needed checking (a same-volume move rename writes no bytes) |
 
 Mismatch reasons: `size_mismatch`, `checksum_mismatch`, `destination_missing`,
 `destination_not_a_file`. Each carries both sides of the discrepancy in its own
-words — expected and actual — so the UI never has to reconstruct them.
+words, expected and actual, so the UI never has to reconstruct them.
 
 ## What a failure does
 
 - The item fails with a `verification_failed` error carrying the reason, and the
   job continues with its remaining items. The job ends `failed`.
-- **Nothing is rolled back.** The file that failed verification stays where it
+- Nothing is rolled back. The file that failed verification stays where it
   is, next to the evidence of what was expected and what was found, because
-  deleting a file the user asked to place — even a wrong one — is a worse
+  deleting a file the user asked to place, even a wrong one, is a worse
   outcome than reporting it.
 - A cross-volume move keeps its source, exactly as it does for any other failed
   item.
@@ -113,7 +113,7 @@ more than it is:
   `unverifiedFiles` counts planned files with no result, so `checkedFiles` can
   never be read as "everything".
 - `coverage` states its claims explicitly: `size`, `structure`, `checksum`, and
-  two that are **always false** — `modifiedTimePreserved` and
+  two that are **always false**, `modifiedTimePreserved` and
   `readonlyPreserved`. This engine does not reapply modified times or the
   read-only attribute, so it says so instead of letting a green badge imply the
   metadata came along.
@@ -155,7 +155,7 @@ transition of the log, a match and each mismatch reason, a checksum that cannot
 be compared being a failure, a link at the destination being a mismatch, the
 coverage claims (including the two that are always false), the verdict wording,
 cancellation during a check, real files that are truncated, corrupted in place,
-and streamed past the buffer size — all against real temporary directories.
+and streamed past the buffer size. All against real temporary directories.
 - `transfer/tests.rs` covers the policy in the engine's own copy path: a `size`
 job that verifies its bytes, a `checksum` job whose digests are recorded and
 whose copy really holds the source's bytes, and a `none` job that reports
@@ -173,7 +173,7 @@ byte.
   history.
 
 A mismatch produced by the copy path itself cannot be manufactured
-deterministically — the engine always compares against the bytes it just wrote
+deterministically, the engine always compares against the bytes it just wrote
 — so that path is not faked with a race. What is asserted instead is the layer
 below it (a real mismatched file, on disk) and the consequence above it (the
 `verification_failed` code and the failed item).

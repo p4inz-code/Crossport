@@ -1,4 +1,4 @@
-# CrossPort Data Flow
+# CrossPort data flow
 
 Version: 4.0
 Status: Approved
@@ -97,7 +97,7 @@ UI adopts the normalized path from the response and renders the entries
 
 The store drops the previous entries while a new location loads, ignores a
 listing that arrives after a newer navigation started, and clears the entries
-when a listing fails — a disconnected volume shows a structured error with
+when a listing fails, a disconnected volume shows a structured error with
 retry and "back to volumes" instead of stale content.
 
 ## Path inspection flow (implemented)
@@ -142,7 +142,7 @@ engine runs the job one item at a time, publishing throttled "transfer:update"
 transfer store merges each snapshot by job identifier; the queue renders it
 ```
 
-Every number the UI shows — sizes, speeds, ETAs, collisions — comes from the
+Every number the UI shows, sizes, speeds, ETAs, collisions, comes from the
 backend. Pause, resume, cancel, and remove are commands; cancel discards partial
 output and asks first.
 

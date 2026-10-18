@@ -1,4 +1,4 @@
-# CrossPort 1.1.2 — release document
+# CrossPort 1.1.2: release document
 
 Status: built, installed, and validated on Windows. Not code-signed. Windows only.
 
@@ -28,7 +28,7 @@ When a history or settings document could not be used, the backend sets it aside
 next to the original so the problem stays diagnosable. The preserved name came
 from a millisecond timestamp alone (`history.corrupt-<stamp>.json`). Two
 documents preserved inside the same millisecond therefore produced the same
-name, and the second `std::fs::rename` silently replaced the first — losing the
+name, and the second `std::fs::rename` silently replaced the first, losing the
 very evidence the preservation exists to keep.
 
 The name now carries an attempt counter, and it only uses the counter when the
@@ -41,7 +41,7 @@ in 320** after it.
 A path whose closest existing ancestor is a regular file cannot exist. Windows
 reports that as "not found"; POSIX reports `ENOTDIR`. The persistence and safety
 layers previously read the OS error kind, so the same input could produce
-different outcomes per platform — and reading `io::ErrorKind::NotADirectory`
+different outcomes per platform, and reading `io::ErrorKind::NotADirectory`
 would have raised the crate's declared MSRV (1.77.2).
 
 Both now ask `filesystem::blocking_file`, a small helper that walks the parents
@@ -102,15 +102,15 @@ application was driven through its own backend and interface:
 
 | Step | Result |
 | --- | --- |
-| Startup | log records `CrossPort v1.1.2 starting on windows (windows/x86_64)`; footer reads **v1.1.2** |
+| Startup | log records `CrossPort v1.1.2 starting on windows (windows/x86_64)`; footer reads v1.1.2 |
 | Browse a volume | volume rail, breadcrumb walk `C:\` → `Users` → `Public` → a folder, listing rows |
-| Copy with checksum verification | **completed**, verdict `verified (size_and_checksum, 23 bytes)` |
-| Conflict strategy `skip` | **completed** with `skippedItems: 1` and one issue of reason `skipped` |
-| Move | **completed**, verdict `not verified` — a same-volume move of a non-colliding root is a single rename that writes no bytes, which is the documented outcome (`docs/architecture/VERIFICATION.md`) |
-| Pause / resume | running at 10 of 61 files → **paused**, held at 10 of 61 for 1.5 s with no progress → resumed → **completed**, `verified (size, 61 files, 1403316480 bytes)`, 0 issues |
-| Cancel | running at 21 of 60 files → **cancelling** → **cancelled**; the 21 committed files were verified and kept (`verified (size_and_checksum, 21 files, 176160768 bytes)`), no `.partial` or temp file was left behind |
+| Copy with checksum verification | completed, verdict `verified (size_and_checksum, 23 bytes)` |
+| Conflict strategy `skip` | completed with `skippedItems: 1` and one issue of reason `skipped` |
+| Move | completed, verdict `not verified`, a same-volume move of a non-colliding root is a single rename that writes no bytes, which is the documented outcome (`docs/architecture/VERIFICATION.md`) |
+| Pause / resume | running at 10 of 61 files → paused, held at 10 of 61 for 1.5 s with no progress → resumed → completed, `verified (size, 61 files, 1403316480 bytes)`, 0 issues |
+| Cancel | running at 21 of 60 files → cancelling → cancelled; the 21 committed files were verified and kept (`verified (size_and_checksum, 21 files, 176160768 bytes)`), no `.partial` or temp file was left behind |
 | History | the completed, cancelled, and moved jobs are recorded durably (`transfer-history.json`, 21 records) |
-| Recovery | `candidates: []` — nothing was left interrupted |
+| Recovery | `candidates: []`, nothing was left interrupted |
 | Clean close | process exits; `transfer-state.json` holds `{"jobs": [], "schemaVersion": 1}`; the log contains no warning or error for the whole session |
 | Uninstall | program directory, Start-menu entry, and desktop shortcut all removed; user data under `%APPDATA%\com.crossport.app` survives, as documented |
 
@@ -166,7 +166,7 @@ exit 1603). The NSIS installer is the graded artifact for this release.
 
 1. `bash scripts/check-versions.sh`
 2. The full gate (see the table above).
-3. `bash scripts/release.sh` — builds the frontend, builds with `--locked`, and
+3. `bash scripts/release.sh`: builds the frontend, builds with `--locked`, and
    writes `checksums.txt`.
 4. `cargo test --test artifact_smoke -- --nocapture`
 5. `sha256sum -c checksums.txt` from the bundle directory.

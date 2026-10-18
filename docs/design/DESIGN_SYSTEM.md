@@ -1,4 +1,4 @@
-# CrossPort Design System
+# CrossPort design system
 
 Version: 1.0
 
@@ -19,7 +19,7 @@ The interface should not require learning.
 
 ---
 
-# Design Principles
+# Design principles
 
 ## Clarity
 
@@ -49,7 +49,7 @@ The same action should behave the same way everywhere.
 
 ---
 
-# Visual Identity
+# Visual identity
 
 CrossPort is:
 
@@ -138,6 +138,6 @@ Never to slow users down.
 
 ---
 
-# Design Goal
+# Design goal
 
 A first-time user should understand CrossPort without reading documentation.

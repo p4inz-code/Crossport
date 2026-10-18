@@ -1,4 +1,4 @@
-# CrossPort Desktop
+# CrossPort desktop
 
 The Tauri 2 desktop application for CrossPort, a file-transfer utility for
 moving and verifying files across mounted volumes. Windows is the current
@@ -75,7 +75,7 @@ job, so the queue stays live without polling.
   `form-action`, and `frame-ancestors` all locked to `'none'`; a separate dev
   CSP adds only what Vite HMR needs.
 - Capabilities: `capabilities/default.json` grants `core:default` to the main
-  window and nothing else — no fs, shell, or http permission.
+  window and nothing else. No fs, shell, or http permission.
 
 ## Development
 
@@ -104,7 +104,7 @@ cd src-tauri && cargo fmt --check && cargo check --all-targets && cargo clippy -
 
 All visual decisions flow from the CSS custom properties in
 `src/styles/tokens/`. Never hardcode colors, spacing, radius, typography,
-elevation, or transitions in components — use the tokens.
+elevation, or transitions in components. Use the tokens.
 
 ## Testing
 

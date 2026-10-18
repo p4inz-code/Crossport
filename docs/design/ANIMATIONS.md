@@ -25,7 +25,7 @@ Motion is centralized in `apps/desktop/src/styles/tokens/transitions.css`.
 ## Rules
 
 - Interactions animate only `background-color`, `border-color`, `color`,
-  `box-shadow`, or `transform` — never layout properties.
+  `box-shadow`, or `transform`, never layout properties.
 - Hover/active/focus transitions use `--transition-fast`.
 - The loading spinner is the only continuous animation and is disabled for
   users with `prefers-reduced-motion: reduce`.

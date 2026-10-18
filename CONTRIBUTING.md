@@ -20,7 +20,7 @@ in the project is subject to it.
   `pnpm lint`, `pnpm check`, `pnpm --filter desktop build`, `pnpm test`,
   `cargo fmt --check`, `cargo check`, `cargo test`.
 - Keep versions in sync (`bash scripts/check-versions.sh`).
-- Write tests for new logic. The suite must run real tests — CI fails if it
+- Write tests for new logic. The suite must run real tests, CI fails if it
   doesn't.
 - Prefer the simplest correct change. Readable over clever, reliable over
   feature-rich.

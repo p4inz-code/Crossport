@@ -66,7 +66,7 @@ owned by P4inz Interactive Labs.
 The CrossPort name, wordmark, and logo are brand assets. They are separate from
 the software license: the Apache License 2.0 grants rights to the source code,
 and section 6 of that license states it does not grant permission to use trade
-names, trademarks, service marks, or product names — except for reasonable and
+names, trademarks, service marks, or product names, except for reasonable and
 customary use in describing the origin of the work or reproducing the `NOTICE`
 file.
 

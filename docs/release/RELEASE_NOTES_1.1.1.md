@@ -1,6 +1,6 @@
 # CrossPort 1.1.1
 
-A Windows file-transfer utility that moves files between your drives — with a
+A Windows file-transfer utility that moves files between your drives, with a
 review of what will happen before it starts, and proof of what landed when it
 finishes.
 
@@ -8,16 +8,16 @@ finishes.
 
 ## What's new
 
-- **Fixed: transfers now work from the interface.** In 1.1.0 a value the
+- Fixed: transfers now work from the interface. In 1.1.0 a value the
   interface needs was missing from the data the backend sent back about a
   transfer. Starting a copy or move reported an "unexpected payload" error, and
   the Transfers page reported the queue as unavailable. 1.1.1 sends that value
   again, so transfers can be started, watched, paused, and reviewed in the app.
-  The transfer engine itself was never affected — it moved files correctly the
+  The transfer engine itself was never affected. It moved files correctly the
   whole time.
-- **Fixed: the queue shows real jobs again**, with live progress and the final
+- Fixed: the queue shows real jobs again, with live progress and the final
   verification verdict.
-- **Documentation correction:** a downgrade is *permitted*, not refused. The
+- Documentation correction: a downgrade is *permitted*, not refused. The
   interactive installer reports that a newer version is installed and replaces
   it only after uninstalling it, and a silent install replaces it outright.
 - Includes the 1.1.0 interface work: a responsive layout that uses the whole
@@ -30,9 +30,9 @@ finishes.
   filesystem, capacity, read-only state).
 - Copy or move files and folders recursively.
 - Resolve conflicts with Replace, Skip, or Rename.
-- Review a **dry run** before anything is written: where each source lands,
+- Review a dry run before anything is written: where each source lands,
   item and byte counts, free space, conflict behaviour, and warnings.
-- Verify what was written: **size** (default) or **SHA-256**, with an honest
+- Verify what was written: size (default) or SHA-256, with an honest
   verdict that states what was and was not checked.
 - Live progress with pause, resume, and cancel.
 - Durable transfer history and crash recovery with an explicit decision.
@@ -45,9 +45,9 @@ The full matrix is in
 - Frontend: Biome, ESLint, TypeScript + Vite production build, and the Vitest
   suite (including performance budgets) all pass.
 - Rust: `cargo fmt --check`, `cargo check --all-targets`, `cargo clippy
-  --all-targets -- -D warnings`, and `cargo test` — 398 tests passed, including
+  --all-targets, -D warnings`, and `cargo test`, 398 tests passed, including
   real-file copy, move, conflict, pause/resume/cancel, verification, and
-  recovery tests — all clean.
+  recovery tests, all clean.
 - A regression test now asserts that the transfer data sent to the interface
   includes its verification verdict.
 - Real-file workflow: a copy was executed through the application's own backend
@@ -61,9 +61,9 @@ The full matrix is in
 
 | Platform | Status |
 | --- | --- |
-| **Windows 10 1607+ / Windows 11, 64-bit** | **Supported.** The only packaged and tested target. |
-| Linux | Not built, not tested, not supported — application foundation only. |
-| macOS | Not built, not tested, not supported — application foundation only. |
+| Windows 10 1607+ / Windows 11, 64-bit | Supported. The only packaged and tested target. |
+| Linux | Not built, not tested, not supported, application foundation only. |
+| macOS | Not built, not tested, not supported, application foundation only. |
 
 CrossPort is an application, not a filesystem driver. It does not mount, format,
 or repair volumes, and it does not add native NTFS write access on macOS.
@@ -71,20 +71,20 @@ or repair volumes, and it does not add native NTFS write access on macOS.
 ## Known limitations
 
 - Windows only; no macOS or Linux build.
-- The installers are **not code-signed**, so Windows shows an unknown-publisher
+- The installers are not code-signed, so Windows shows an unknown-publisher
   warning on first install.
 - A downgrade is permitted rather than refused; there is no auto-updater.
 - One transfer runs at a time.
 - History is bounded (200 records by default, 2,000 at most).
 - Verification proves only the claims it lists; modified times, attributes, and
   alternate data streams are not reapplied.
-- An interrupted transfer is restarted or discarded whole — there is no
+- An interrupted transfer is restarted or discarded whole. There is no
   byte-offset resume.
 - Paths longer than 260 characters need Windows long-path support enabled.
 
 ## Installation
 
-1. Download **`CrossPort_1.1.1_x64-setup.exe`** (recommended) or
+1. Download `CrossPort_1.1.1_x64-setup.exe` (recommended) or
    **`CrossPort_1.1.1_x64_en-US.msi`**.
 2. Run it. The NSIS installer installs for the current user into
    `%LOCALAPPDATA%\CrossPort` and adds a Start-menu entry and a desktop
@@ -108,4 +108,4 @@ synchronization. MIT licensed.
 
 *Historical note: CrossPort 1.1.1 was published under the MIT License, and the
 installers attached to this release carry that license text. The current
-development line is Apache-2.0 — see `docs/legal/LICENSING.md`.*
+development line is Apache-2.0, see `docs/legal/LICENSING.md`.*

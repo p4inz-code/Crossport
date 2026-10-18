@@ -1,4 +1,4 @@
-# Platform Support
+# Platform support
 
 This document states exactly which platforms CrossPort ships on today and what
 the application architecture is prepared for. It is deliberately conservative:
@@ -38,7 +38,7 @@ What is platform-specific today:
 | --- | --- | --- |
 | Volume roots | Drive letters (`C:\`) via `GetLogicalDrives` | Conventional mount points (`/`, `/Volumes/...`) |
 | Volume metadata | Win32 volume APIs (`GetDriveTypeW`, `GetDiskFreeSpaceExW`, `GetVolumeInformationW`) | Mount-point discovery; metadata the platform does not report stays `null` |
-| Links / junctions | Reparse points (symlinks **and** junctions) reported, never followed | Symlinks reported, never followed |
+| Links / junctions | Reparse points (symlinks and junctions) reported, never followed | Symlinks reported, never followed |
 | Filesystem permissions | Read-only flag from attributes | POSIX mode bits |
 | App data | `%APPDATA%`, `%LOCALAPPDATA%` via Tauri's path resolver | XDG paths via the same resolver |
 | Dialogs | Native folder picker hosted in Rust (`tauri-plugin-dialog`) | The same plugin; its native backend differs per platform |
@@ -62,8 +62,8 @@ POSIX paths, mount points under `/Volumes`, APFS/HFS+ volumes, permissions,
 symlinks, case-insensitivity on the default volume, and application-support
 paths are all handled by the same abstractions. No macOS bundle is produced.
 
-**Important:** CrossPort does **not** provide native NTFS write access on macOS.
-macOS mounts most NTFS volumes read-only, and CrossPort can only report that —
+**Important:** CrossPort does not provide native NTFS write access on macOS.
+macOS mounts most NTFS volumes read-only, and CrossPort can only report that
 it operates on filesystems the operating system has already mounted, using the
 permissions the operating system granted. Writing to a read-only NTFS volume
 requires a filesystem driver, which is out of scope. See
@@ -78,6 +78,6 @@ requires a filesystem driver, which is out of scope. See
    presentation, and volume metadata for that platform's filesystem types.
 3. Platform-specific documentation and install instructions.
 
-Until those exist, this document — and every user-facing claim — says Windows
+Until those exist, this document, and every user-facing claim, says Windows
 only. Adding a Linux or macOS icon set, a `cfg` arm, or a build file is not a
 release.

@@ -1,4 +1,4 @@
-# CrossPort 1.1.1 — release document
+# CrossPort 1.1.1: release document
 
 Status: built and validated on Windows. Not code-signed. Windows only.
 
@@ -39,7 +39,7 @@ made every `start_transfer`, `list_transfers`, and `get_transfer` call fail
 frontend validation:
 
 - starting a transfer in the composer reported *"unexpected payload"*, and
-- the Transfers page reported the queue as **unavailable**.
+- the Transfers page reported the queue as unavailable.
 
 The engine was never at fault: it planned, queued, copied, and verified
 correctly. Only the value the UI reads was absent.
@@ -52,7 +52,7 @@ serialized summary carries its verdict, so the field cannot silently disappear
 again.
 
 Also included (documentation only): the corrected downgrade claim from
-`RELEASE_1.1.0.md` — a downgrade is permitted, not refused.
+`RELEASE_1.1.0.md`, a downgrade is permitted, not refused.
 
 No engine, persistence, security, or IPC-shape behaviour changed beyond that
 added field.
@@ -87,11 +87,11 @@ The built 1.1.1 application was launched and driven directly (WebView2 remote
 debugging), then a real copy was executed through the application's own backend
 and the interface inspected:
 
-- the Transfers page rendered the job: status **Completed**, 11.4 MB of
+- the Transfers page rendered the job: status Completed, 11.4 MB of
   11.4 MB, 2 of 2 files, and the verdict
-  **"SHA-256 verification — verified (size_and_checksum, 2 files, 12000000 bytes)"**;
+  **"SHA-256 verification: verified (size_and_checksum, 2 files, 12000000 bytes)"**;
 - a completion notification carried the same verdict;
-- the version footer reported **v1.1.1**.
+- the version footer reported v1.1.1.
 
 ## Artifacts and checksums
 
@@ -129,7 +129,7 @@ and the interactive pass recorded under "Release 1.1" in `ROADMAP.md`.
 
 1. `bash scripts/check-versions.sh`
 2. The full gate (see the table above).
-3. `bash scripts/release.sh` — builds the frontend, builds with `--locked`, and
+3. `bash scripts/release.sh`: builds the frontend, builds with `--locked`, and
    writes `checksums.txt`.
 4. `cargo test --test artifact_smoke -- --nocapture`
 5. `sha256sum -c checksums.txt` from the bundle directory.

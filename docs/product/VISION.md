@@ -1,4 +1,4 @@
-# CrossPort Vision
+# CrossPort vision
 
 Version: 1.0
 Status: Approved
@@ -32,7 +32,7 @@ The answer should naturally be:
 
 ---
 
-# Vision Statement
+# Vision statement
 
 Everyone deserves professional-quality cross-platform file tools without subscriptions, advertisements, telemetry, or unnecessary complexity.
 
@@ -40,7 +40,7 @@ CrossPort believes software should respect its users.
 
 ---
 
-# Core Values
+# Core values
 
 • Free Forever
 • Offline First
@@ -59,7 +59,7 @@ CrossPort believes software should respect its users.
 
 CrossPort should disappear into the user's workflow.
 
-People should remember finishing their work—not using CrossPort.
+People should remember finishing their work, not using CrossPort.
 
 The software should feel:
 
@@ -87,7 +87,7 @@ Recommendation is.
 
 ---
 
-# Long-Term Vision
+# Long-Term vision
 
 By 2030, CrossPort should be recognized as the default free utility for safe and reliable cross-platform file movement.
 

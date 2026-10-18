@@ -1,5 +1,5 @@
-> **Status: roadmap — partly implemented.** This document describes the planned product scope; the repository currently implements Phases 1–5 (settings, platform volumes, filesystem browsing with a breadcrumb trail and back/forward/up, the transfer engine, post-transfer verification, crash recovery, transfer history, and the product experience around them: composer, queue, history and recovery surfaces, notifications, keyboard support, and the close guard). Version 2 and later candidates are not started.
-# Feature Specification
+> **Status: roadmap: partly implemented.** This document describes the planned product scope; the repository currently implements Phases 1-5 (settings, platform volumes, filesystem browsing with a breadcrumb trail and back/forward/up, the transfer engine, post-transfer verification, crash recovery, transfer history, and the product experience around them: composer, queue, history and recovery surfaces, notifications, keyboard support, and the close guard). Version 2 and later candidates are not started.
+# Feature specification
 
 Version: 1.0
 
@@ -7,7 +7,7 @@ Status: Living Document
 
 ---
 
-# Product Scope
+# Product scope
 
 CrossPort focuses on safe, reliable, cross-platform file movement.
 
@@ -15,15 +15,15 @@ Features are accepted only if they strengthen this mission.
 
 ---
 
-# Version 1 Features
+# Version 1 features
 
-## Smart Copy
+## Smart copy
 
 Guided file transfer between supported operating systems.
 
 ---
 
-## Drag and Drop
+## Drag and drop
 
 Support:
 
@@ -33,25 +33,25 @@ Support:
 
 ---
 
-## Transfer Queue
+## Transfer queue
 
 Support multiple queued transfers.
 
 ---
 
-## Pause and Resume
+## Pause and resume
 
 Transfers should recover whenever possible.
 
 ---
 
-## Retry Failed Files
+## Retry failed files
 
 Retry individual failures without restarting the entire transfer.
 
 ---
 
-## Smart Verification
+## Smart verification
 
 Optional verification after transfer completion.
 
@@ -67,7 +67,7 @@ Retention period is user configurable.
 
 ---
 
-## Friendly Errors
+## Friendly errors
 
 Every error should explain:
 
@@ -77,7 +77,7 @@ Every error should explain:
 
 ---
 
-## Connected Drives
+## Connected drives
 
 Automatically detect available drives.
 
@@ -103,7 +103,7 @@ Support:
 
 ---
 
-# Version 2 Candidates
+# Version 2 candidates
 
 - Folder synchronization
 - Watch folders
@@ -113,7 +113,7 @@ Support:
 
 ---
 
-# Version 3 Candidates
+# Version 3 candidates
 
 - Automation
 - Scheduling
@@ -122,7 +122,7 @@ Support:
 
 ---
 
-# Version 4 Candidates
+# Version 4 candidates
 
 - Optional crash reporting
 - Enterprise deployment improvements
@@ -130,7 +130,7 @@ Support:
 
 ---
 
-# Version 5 Candidates
+# Version 5 candidates
 
 - Plugin architecture
 - Community extensions
@@ -138,21 +138,21 @@ Support:
 
 ---
 
-# Acceptance Requirements
+# Acceptance requirements
 
 Every feature must satisfy all of the following:
 
-✓ Improves user workflow
+Improves user workflow
 
-✓ Maintains simplicity
+Maintains simplicity
 
-✓ Preserves reliability
+Preserves reliability
 
-✓ Fits the product mission
+Fits the product mission
 
-✓ Can be tested independently
+Can be tested independently
 
-✓ Does not introduce unnecessary complexity
+Does not introduce unnecessary complexity
 
 ---
 

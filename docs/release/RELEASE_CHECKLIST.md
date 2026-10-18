@@ -1,7 +1,7 @@
-# Release Checklist
+# Release checklist
 
-The pass to run before tagging. It matches what the repository actually does —
-Windows artifacts built locally, no publishing automation — so nothing here
+The pass to run before tagging. It matches what the repository actually does
+Windows artifacts built locally, no publishing automation. So nothing here
 describes a workflow that does not exist.
 
 `docs/release/RELEASE_1.1.2.md` is the release document this checklist verifies
@@ -42,7 +42,7 @@ deliberately not supported. Keep them in step.
 - [ ] Uninstall: program files, shortcuts, and the registry entry are gone, and
       `%APPDATA%\com.crossport.app` and `%LOCALAPPDATA%\com.crossport.app` are
       still there
-- [ ] Record the numbers from `cargo test --lib measure -- --ignored
+- [ ] Record the numbers from `cargo test --lib measure, --ignored
       --nocapture --test-threads=1` against `docs/development/PERFORMANCE.md`
       and update anything that moved materially
 - [ ] Confirm no horizontal overflow and no clipped primary controls at
@@ -52,7 +52,7 @@ deliberately not supported. Keep them in step.
 ## Security model (spot-check)
 
 - [ ] `apps/desktop/src-tauri/capabilities/default.json` still grants only
-      `core:default` — no fs, dialog, shell, or http permission for the webview
+      `core:default`: no fs, dialog, shell, or http permission for the webview
 - [ ] The production CSP in `tauri.conf.json` is unchanged, or a change is
       justified: no `unsafe-eval`, no remote origins, `object-src 'none'`,
       `form-action 'none'`, `frame-ancestors 'none'`
@@ -88,7 +88,7 @@ deliberately not supported. Keep them in step.
 - Artifacts are unsigned: Windows shows an unknown-publisher warning until a
   certificate is configured (`docs/development/RELEASE_PROCESS.md`).
 - Only Windows artifacts are built. No macOS or Linux bundle exists yet.
-- A version upgrade was exercised (1.0.0 → 1.1.0). A downgrade is **not**
+- A version upgrade was exercised (1.0.0 → 1.1.0). A downgrade is not
   refused: `allowDowngrades` is `false`, but it is only enforced on the
   interactive reinstall page, and a silent install replaces the newer build.
   Re-check both at the next version bump.
