@@ -106,7 +106,7 @@ missing.
 - Links are reported, never followed. Symlinks, junctions, and other reparse
   points are recorded as `unsupported` and are never read, copied, or deleted,
   which is what keeps a transfer inside the tree it was given.
-- Metadata is not preserved: and says so. Contents and directory structure
+- Metadata is not preserved, and says so. Contents and directory structure
   are copied; the source's modification time and read-only attribute are not
   reapplied, and every verification summary reports those two claims as
   explicitly false instead of leaving a verdict to imply otherwise.
